@@ -1,0 +1,51 @@
+# 帳號密碼從同一層的 .env 讀取（POSTGRES_USER、POSTGRES_PASSWORD、POSTGRES_DB），不寫在這個檔案中。
+# 啟動：docker compose up -d --build
+# 網址：http://localhost:8000（可在 .env 設定 WEB_PORT 改變對外的連接埠）
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-recognition}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?請在 .env 設定 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-recognition_db}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # 預設不對外開放資料庫連接埠，避免與本機的 PostgreSQL（5432）衝突。需要從本機連線時再取消註解
+    # ports:
+    #   - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 伺服器啟動時會建立 Redis 連線池（core/redis.py），Redis 無法連線時伺服器不會啟動
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    environment:
+      # 容器內以服務名稱連線，不使用 .env 中指向 localhost 的 POSTGRES_URI、REDIS_HOST
+      POSTGRES_URI: postgresql+asyncpg://${POSTGRES_USER:-recognition}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-recognition_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

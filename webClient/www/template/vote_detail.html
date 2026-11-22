@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>計票結果</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --border: #e8ebf2;
+    --text: #1a1f36;
+    --muted: #6b7280;
+    --primary: #3b6ef5;
+    --red: #e5484d;
+    --radius: 12px;
+
+    /* 右側展示區（Reporting） */
+    --panel: #f4f6f9;
+    --teal: #14b1d8;
+    --teal-soft: #e6f7fb;
+    --card-text: #2b2f3a;
+    --card-muted: #8a909c;
+    --card-line: #eef0f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  a { color: inherit; text-decoration: none; }
+  svg { display: block; }
+  button { font: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .main { flex: 1; min-width: 0; background: var(--surface); display: flex; flex-direction: column; }
+
+  /* ---------- Sidebar ---------- */
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 28px; }
+  .brand-name { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+    color: #374151; font-size: 16px; font-weight: 500;
+    transition: background .15s;
+  }
+  .nav a:hover { background: #f3f5fa; }
+  .nav a.active { background: var(--primary); color: #fff; }
+  .nav svg { width: 18px; height: 18px; }
+  .help { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 20px 12px 0; color: #374151; font-size: 16px; font-weight: 500; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 24px; padding: 22px 32px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 36px; }
+  .profile { display: flex; align-items: center; gap: 14px; }
+  .profile-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #2f3542; color: #fff; font-weight: 600; font-size: 18px;
+    display: grid; place-items: center;
+  }
+  .profile-name { font-weight: 600; font-size: 14px; color: var(--card-text); }
+  .profile-role { font-size: 14px; color: var(--card-muted); margin-top: 2px; }
+  .chevron {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #5b606b; color: #5b606b;
+    display: grid; place-items: center; margin-left: 10px; background: none; cursor: pointer;
+  }
+
+  /* ---------- Panel ---------- */
+  .panel { flex: 1; background: var(--panel); border-top-left-radius: 32px; padding: 30px 32px 40px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid #e4e7ed; }
+  .panel-head + .grid { margin-top: 16px; }   /* 會議資訊卡片緊接在長條線下方 */
+  .filters { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .filter { display: flex; align-items: center; gap: 10px; background: none; border: none; cursor: pointer; color: #3a3f4b; font-size: 14px; font-weight: 500; }
+  .filter .count {
+    min-width: 28px; height: 36px; padding: 0 14px; border-radius: 6px;
+    background: var(--surface); color: #3a3f4b; font-size: 16px; font-weight: 600;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 8px rgba(30, 40, 60, .06);
+    border: 1px solid transparent;
+  }
+  .filter.active .count { background: var(--teal-soft); color: var(--teal); border-color: var(--teal); }
+
+  /* ---------- Project cards ---------- */
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 44px 20px; } /* 單欄：卡片延伸到右側邊框，但不會被內容撐得更寬 */
+  .grid > * { min-width: 0; }
+  .project {
+    position: relative; background: var(--surface); border-radius: 24px;
+    padding: 46px 30px 26px;
+    box-shadow: 0 10px 30px rgba(30, 40, 60, .06);
+  }
+  .project-icon {
+    position: absolute; top: -24px; left: 30px;
+    width: 46px; height: 46px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    background: #3b6ef5; /* 與左側欄選中項目的藍色相同 */
+    box-shadow: 0 8px 16px rgba(59, 110, 245, .33);
+  }
+  .project h3 { font-size: 18px; font-weight: 500; color: var(--card-text); letter-spacing: .2px; margin-bottom: 10px; }
+  .meta { display: flex; align-items: center; gap: 10px; color: var(--card-muted); font-size: 12px; margin-top: 8px; }
+  .meta svg { color: #9aa0ab; flex-shrink: 0; }
+  .project-foot { border-top: 1px solid var(--card-line); margin-top: 22px; padding-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .foot-label { font-size: 12px; font-weight: 600; color: var(--card-text); }
+  .foot-label.right { text-align: left; min-width: 52px; }
+  .progress { font-size: 12px; font-weight: 600; color: var(--card-text); align-self: center; min-width: 52px; }
+
+  /* ---------- 按鈕（儲存獎金計算） ---------- */
+  .btn { height: 38px; padding: 0 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .btn-primary { background: #3b6ef5; color: #fff; }
+  .btn-primary:hover { background: #2f5fe0; }
+  .btn:focus-visible { outline: 2px solid #3b6ef5; outline-offset: 2px; }
+
+  /* ---------- 會議資訊卡片 ---------- */
+  .info-card { padding-top: 28px; }   /* 沒有左上角圖示，縮小上方留白 */
+  .info-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px 20px; }
+  .info-grid .span-6 { grid-column: span 6; }
+  .info-grid .span-3 { grid-column: span 3; }
+  .info-grid .span-2 { grid-column: span 2; }
+  .info-actions {
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+    border-top: 1px solid var(--card-line); margin-top: 24px; padding-top: 18px;
+  }
+  .save-status { font-size: 13px; color: #22a45d; }
+  .project[hidden] { display: none; }
+
+  /* ---------- 排序與獎金計算：計票結果卡片 ---------- */
+  .result-card { padding-top: 26px; min-width: 0; max-width: 100%; }
+  .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .rc-title { font-size: 20px; font-weight: 700; color: var(--card-text); margin: 0; }
+  .pill { font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 99px; white-space: nowrap; }
+  /* 色系以畫面主色藍為主 */
+  .pill.open { background: #eaf0ff; color: #3b6ef5; }
+  .pill.closed { background: #eef0f4; color: #6b7280; }
+  .pill.draft { background: #f3f5fa; color: #8a909c; }
+  .meter { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 14px; color: var(--card-muted); }
+  .meter .bar { width: 140px; height: 6px; border-radius: 4px; background: #eef0f4; overflow: hidden; flex-shrink: 0; }
+  .meter .bar i { display: block; height: 100%; background: #3b6ef5; }
+
+  .rc-table-wrap { overflow-x: auto; max-width: 100%; margin-top: 18px; }   /* 放不下時在表格內左右捲動 */
+  .rc-table { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--card-text); }
+  .rc-table th { text-align: left; font-weight: 500; font-size: 13px; color: #5b606b; padding: 10px 12px; border-bottom: 1px solid #e4e7ed; white-space: nowrap; }
+  .rc-table td { padding: 14px 12px; border-bottom: 1px solid var(--card-line); vertical-align: middle; line-height: 1.6; }
+  .rc-table .num { text-align: right; white-space: nowrap; }
+  .rc-table td.num { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .rc-table .place { text-align: center; width: 56px; }
+  .rc-table td.nm { min-width: 180px; }                       /* 提名名稱 */
+  .rc-table td.person { white-space: nowrap; }               /* 上司、下屬 */
+  .rc-table tr.top td { background: #eaf0ff; }
+  .maj { color: #3b6ef5; font-weight: 600; white-space: nowrap; }
+  .nomaj { color: var(--card-muted); white-space: nowrap; }
+  .rc-empty { padding: 18px 0 4px; font-size: 14px; color: var(--card-muted); }
+
+  .fund-section { margin-top: 22px; padding-top: 20px; border-top: 1px dashed #d6dae3; }
+  .fund-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
+  .fund-title { font-size: 16px; font-weight: 600; color: var(--card-text); }
+  .fund-note { font-size: 13px; color: var(--card-muted); }
+  .money, .note-in { font: inherit; font-size: 14px; color: var(--card-text); padding: 8px 10px; border: 1px solid #d6dae3; border-radius: 8px; background: var(--surface); }
+  .money { width: 110px; text-align: right; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .note-in { width: 100%; min-width: 140px; }
+  .money:focus, .note-in:focus { outline: none; border-color: #3b6ef5; box-shadow: 0 0 0 3px rgba(59, 110, 245, .15); }
+  .net.neg { color: var(--red); }
+  .fund-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 16px; }
+  /* ---------- 獎金預算總覽 ---------- */
+  .basis { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .basis-label { font-size: 14px; color: var(--card-muted); }
+  /* 每個按鈕各自一條 1px 外框，相鄰處重疊成一條線；選中的按鈕外框改為藍綠色，只有一條細線 */
+  .seg { display: inline-flex; }
+  .seg button {
+    position: relative;
+    border: 1px solid #d6dae3; background: var(--surface); color: #5b606b; cursor: pointer;
+    font-size: 15px; font-weight: 500; padding: 10px 16px;
+  }
+  .seg button:first-child { border-radius: 10px 0 0 10px; }
+  .seg button:last-child { border-radius: 0 10px 10px 0; }
+  .seg button + button { margin-left: -1px; }
+  .seg button.on { z-index: 1; background: var(--teal-soft); color: var(--teal); font-weight: 700; border-color: var(--teal); } /* 底色、文字、外框皆與分頁選中時同色 */
+  .seg button:focus-visible { outline: 2px solid #3b6ef5; outline-offset: -2px; }
+  /* 數字共用：等寬、黑字 */
+  .budget-card b {
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;
+    font-weight: 600; color: var(--card-text); overflow-wrap: anywhere;
+  }
+  .budget-card b.neg { color: var(--red); }   /* 超出預算時剩餘預算為紅色 */
+
+  /* 預算與獎金：兩排都是四欄，上下對齊 */
+  .budget-group { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--card-line); }
+  .budget-group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  .group-title { font-size: 14px; font-weight: 600; color: var(--card-text); margin-bottom: 12px; }
+  /* 算式上方：剩餘預算依切換靠右 */
+  .group-head { display: flex; align-items: center; justify-content: flex-end; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .tile { display: flex; flex-direction: column; gap: 6px; min-width: 0; background: #f7f8fb; border-radius: 10px; padding: 14px 16px; }
+  .tile span { font-size: 13px; color: var(--card-muted); }
+  .budget-card .tile b { font-size: 20px; }
+  /* 名詞說明 */
+  .glossary { display: flex; flex-direction: column; gap: 10px; }
+  .glossary div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+  .glossary dt { font-size: 14px; font-weight: 600; color: var(--card-text); }
+  .glossary dd { font-size: 14px; color: var(--card-muted); line-height: 1.6; }
+  @media (max-width: 560px) { .glossary div { grid-template-columns: 1fr; gap: 2px; } }
+  .tile[hidden], .op[hidden] { display: none; }
+
+  /* 算式排列：方塊之間固定 24px 寬的運算符號欄 */
+  .tiles.formula {
+    grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr) 24px minmax(0, 1fr);
+    align-items: center; column-gap: 8px;
+  }
+  .op { font-size: 20px; font-weight: 600; color: #9aa0ab; text-align: center; line-height: 1; }
+
+  /* 畫面變窄時改為上下排列，運算符號置中顯示在方塊之間 */
+  @media (max-width: 860px) {
+    .tiles, .tiles.formula { grid-template-columns: 1fr; row-gap: 6px; }
+    .op { font-size: 18px; }
+  }
+
+  .award-list { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+  .award-list[hidden] { display: none; }
+
+  /* ---------- 串接 API：狀態與錯誤 ---------- */
+  a.brand-name { color: inherit; }
+  a.brand-name:hover { color: #3b6ef5; }
+  .state-box {
+    text-align: center; padding: 40px 16px; background: var(--surface);
+    border-radius: 16px; color: var(--card-muted); font-size: 14px; line-height: 1.8;
+  }
+  .state-box.error { color: var(--red); }
+  .state-box[hidden] { display: none; }
+  .state-box a, .state-box .btn { display: inline-block; margin-top: 12px; }
+  .state-box a { color: #3b6ef5; text-decoration: underline; }
+  .result-card .state-box { padding: 24px 0 4px; }
+  .btn-secondary { background: var(--surface); border-color: #d6dae3; color: #374151; }
+  .btn-secondary:hover { background: #f5f7fa; }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .form-error { font-size: 13px; color: var(--red); white-space: pre-line; margin-right: auto; }
+  .form-error:empty { display: none; }
+  .money[aria-invalid="true"], .note-in[aria-invalid="true"] { border-color: var(--red); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .sidebar { display: none; }
+    .topbar { padding: 16px; }
+    .panel { padding: 24px 16px 32px; border-top-left-radius: 20px; }
+    .topbar-right { gap: 20px; }
+  }
+  @media (max-width: 560px) {
+    .profile-text { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <!-- 會議名稱連回會議總覽 -->
+      <a class="brand-name" id="brandName" href="/" title="返回會議總覽"></a>
+    </div>
+
+    <nav class="nav">
+      <a href="#" id="navSetting">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"/><path d="M12 15v3M8 21l4-3 4 3M7 8h6M7 11h10"/></svg>
+        會議設定</a>
+      <a href="#" id="navVote" class="active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        計票結果</a>
+    </nav>
+
+    <a href="#" class="help">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg>
+      說明與支援
+    </a>
+  </aside>
+
+  <!-- ================= Main ================= -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="topbar-right">
+        <div class="profile">
+          <div class="profile-avatar">李</div>
+          <div class="profile-text">
+            <div class="profile-name">李佩珊</div>
+            <div class="profile-role">人資室</div>
+          </div>
+          <button class="chevron" aria-label="Account menu">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <!-- 找不到會議或載入失敗時，只顯示這個區塊（VDR1） -->
+      <div id="pageState" class="state-box" hidden></div>
+
+      <div id="pageBody">
+        <div class="panel-head">
+          <div class="filters" id="filters"></div>
+        </div>
+
+        <div class="grid">
+          <!-- 獎金預算總覽分頁 -->
+          <article class="project info-card budget-card" id="infoCard" hidden>
+            <div id="budgetState" class="state-box" hidden></div>
+            <div id="budgetBody">
+              <!-- 預算：標題列右側為剩餘預算的計算依據 -->
+              <section class="budget-group">
+                <div class="group-head">
+                  <div class="basis">
+                    <span class="basis-label" id="basisLabel">剩餘預算依</span>
+                    <div class="seg" role="group" aria-labelledby="basisLabel">
+                      <button type="button" data-basis="net" class="on" aria-pressed="true">實發總金額</button>
+                      <button type="button" data-basis="approved" aria-pressed="false">核定總金額</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- 算式
+                     依實發總金額：總預算 − 實發總金額 = 剩餘預算
+                     依核定總金額：總預算 − 實發總金額 − 扣除即時獎勵 = 剩餘預算 -->
+                <div class="tiles formula">
+                  <div class="tile"><span>總預算</span><b id="figTotal"></b></div>
+                  <span class="op" aria-hidden="true">−</span>
+                  <div class="tile"><span>實發總金額</span><b id="figNetTotal"></b></div>
+                  <span class="op" aria-hidden="true" id="opDeducted">−</span>
+                  <div class="tile" id="tileDeducted"><span>扣除即時獎勵合計</span><b id="figDeducted"></b></div>
+                  <span class="op" aria-hidden="true">=</span>
+                  <div class="tile"><span>剩餘預算</span><b id="figRemaining"></b></div>
+                </div>
+              </section>
+
+              <!-- 名詞說明 -->
+              <section class="budget-group">
+                <h4 class="group-title">名詞說明</h4>
+                <dl class="glossary">
+                  <div><dt>核定總金額</dt><dd>所有提名核定獎金的加總。</dd></div>
+                  <div><dt>扣除即時獎勵合計</dt><dd>獲選者先前已領取的即時獎勵加總，發放時須從核定獎金中扣除。</dd></div>
+                  <div><dt>實發總金額</dt><dd>實際要發放的金額加總，等於核定總金額減去扣除即時獎勵合計。</dd></div>
+                </dl>
+              </section>
+            </div>
+          </article>
+
+          <!-- 獎項分頁：每個獎項一張卡片，由下方程式依資料產生 -->
+          <div class="award-list" id="awardCard"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- 共用：呼叫 API（與 meeting_detail.html 相同，VDR11） ----------
+     - 200：{ ok: true, data }
+     - 400、404：{ ok: false, kind: "rule", status, message, data }
+     - 422：{ ok: false, kind: "validation", errors }
+     - 500 或網路錯誤：{ ok: false, kind: "server" | "network", errorId } */
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+    let json = null;
+    try { json = await res.json(); } catch { /* 回應不是 JSON */ }
+    if (res.ok) return { ok: true, data: json?.data };
+    if (res.status === 422) return { ok: false, kind: "validation", status: 422, errors: json?.detail || [] };
+    if (res.status >= 500) return { ok: false, kind: "server", status: res.status, errorId: json?.data?.error_id };
+    return { ok: false, kind: "rule", status: res.status, message: json?.message || "", data: json?.data };
+  }
+  const serverMessage = (r, action = "操作") => r.kind === "network"
+    ? "無法連線到伺服器，請確認網路後再試。"
+    : `${action}失敗，請稍後再試${r.errorId ? `（錯誤代碼：${r.errorId}）` : ""}`;
+
+  // 後端英文訊息 → 中文（VD4）
+  const RULE_MESSAGES = {
+    "deduct_instant_bonus cannot be greater than issue_bonus": "扣除即時獎勵不得大於核定獎金",
+    "Nomination does not belong to this prize": "部分提名已不存在，請重新載入",
+    "Duplicate nominate_id in items": "資料重複，請重新載入",
+  };
+
+  const fmtMoney = n => Math.round(Number(n) || 0).toLocaleString("zh-TW");
+  const fix2 = v => v === null || v === undefined ? "—" : Number(v).toFixed(2);
+
+  /* ---------- 會議 id（VDR1） ---------- */
+  const rawId = new URLSearchParams(location.search).get("meeting_id");
+  const meetingId = /^[1-9]\d*$/.test(rawId || "") ? Number(rawId) : null;
+
+  let meeting = null;
+  let prizes = [];                 // 依 id 排序
+  const rankings = {};             // prize_id → 排名 API 的回應
+  const savingPrize = new Set();
+
+  function showPageState(html, isError) {
+    $("pageBody").hidden = true;
+    $("pageState").hidden = false;
+    $("pageState").className = "state-box" + (isError ? " error" : "");
+    $("pageState").innerHTML = html;
+  }
+  function showNotFound() {
+    $("brandName").textContent = "會議總覽";
+    showPageState(`找不到此會議<br><a href="/">返回會議總覽</a>`, true);
+  }
+
+  /* ---------- 分頁切換 ---------- */
+  (function () {
+    const filters = [
+      { count: "排序與獎金計算", panel: "awardCard" },
+      { count: "獎金預算總覽", panel: "infoCard" },
+    ];
+    const box = $("filters");
+    box.innerHTML = filters.map((f, i) => `
+      <button class="filter${i === 0 ? " active" : ""}" aria-pressed="${i === 0}" aria-controls="${f.panel}" data-panel="${f.panel}">
+        <span class="count">${f.count}</span>
+      </button>`).join("");
+    box.addEventListener("click", e => {
+      const btn = e.target.closest(".filter"); if (!btn) return;
+      box.querySelectorAll(".filter").forEach(b => {
+        const on = b === btn;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", on);
+        $(b.dataset.panel).hidden = !on;
+      });
+    });
+  })();
+
+  /* ---------- 投票狀態（VD2.1） ---------- */
+  const STATUS_TEXT = { draft: "未開放", open: "投票中", closed: "已截止" };
+  function statusOf(m) {
+    const now = Math.floor(Date.now() / 1000);
+    return now < m.voting_kickoff ? "draft" : now < m.voting_deadline ? "open" : "closed";
+  }
+
+  /* ---------- 排序與獎金計算 ---------- */
+  const awardList = $("awardCard");
+  const cardEl = pid => awardList.querySelector(`[data-prize="${pid}"]`);
+
+  // 提名不顯示編號（VD14）。錯誤訊息以獎金計算表中的列數指出是哪一筆，例如「第 2 列」
+  const rowLabels = items => Object.fromEntries(items.map((it, i) => [it.nominate_id, `第 ${i + 1} 列`]));
+
+  const isNum = v => v !== null && v !== undefined;
+  const thresholdCell = v => v === 1 ? `<span class="maj">是</span>` : v === 0 ? `<span class="nomaj">否</span>` : "—";
+  const moneyText = v => isNum(v) ? fmtMoney(v) : "";
+
+  function resultCardHTML(p, data) {
+    const status = statusOf(meeting);
+    const total = meeting.total_judges;
+    const voted = data.voted_judge_count;
+    const pct = total ? Math.min(100, Math.round(voted / total * 100)) : 0;   // VDQ3：分母為評委人數
+    const head = `
+      <div class="rc-head">
+        <div>
+          <h3 class="rc-title">${esc(p.name)}</h3>
+          <div class="meter"><span class="bar"><i style="width:${pct}%"></i></span>已送出 ${voted} / ${total} 張選票</div>
+        </div>
+        <span class="pill ${status}">${STATUS_TEXT[status]}</span>
+      </div>`;
+    const items = data.items;
+    if (!items.length) return `${head}<div class="rc-empty">此獎項尚無提名。</div>`;
+
+    // 提名分成上司、提名名稱、下屬三欄（VD15）
+    const nomCells = it => `<td class="person">${esc(it.manager_name)}</td><td class="nm">${esc(it.name)}</td><td class="person">${esc(it.employee_name)}</td>`;
+    const ariaLabel = it => esc(`${it.manager_name} ${it.name} ${it.employee_name}`);
+    const place = it => it.rank ?? "—";
+
+    // VDR3、VDR4：順序、名次與門檻結果都使用後端結果
+    const results = `
+      <div class="rc-table-wrap"><table class="rc-table">
+        <thead><tr>
+          <th class="place">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th class="num">通過</th><th class="num">不通過</th>
+          <th class="num">序位得分</th><th class="num">平均序位</th><th>是否通過門檻</th>
+        </tr></thead>
+        <tbody>${items.map(it => `
+          <tr class="${it.rank === 1 && it.threshold === 1 ? "top" : ""}" data-n="${it.nominate_id}">
+            <td class="place">${place(it)}</td>${nomCells(it)}
+            <td class="num">${it.pass_count}</td><td class="num">${voted - it.pass_count}</td>
+            <td class="num">${fix2(it.total_score)}</td><td class="num">${fix2(it.sort_average)}</td>
+            <td>${thresholdCell(it.threshold)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table></div>`;
+
+    const funds = `
+      <div class="fund-section">
+        <div class="fund-head">
+          <span class="fund-title">獎金計算</span>
+          <span class="fund-note">實發金額 = 核定獎金 − 已獲即時獎勵（獲選團隊之前沒領過就留空）</span>
+        </div>
+        <div class="rc-table-wrap"><table class="rc-table">
+          <thead><tr>
+            <th class="place">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th>是否通過門檻</th><th class="num">核定獎金</th>
+            <th class="num">扣除即時獎勵</th><th class="num">實發金額</th><th>備註</th>
+          </tr></thead>
+          <tbody>${items.map(it => `
+            <tr data-n="${it.nominate_id}">
+              <td class="place">${place(it)}</td>${nomCells(it)}
+              <td>${thresholdCell(it.threshold)}</td>
+              <td class="num"><input class="money" data-p="${p.id}" data-n="${it.nominate_id}" data-k="issue_bonus" inputmode="numeric" placeholder="0" aria-label="${ariaLabel(it)} 核定獎金" value="${moneyText(it.issue_bonus)}"></td>
+              <td class="num"><input class="money" data-p="${p.id}" data-n="${it.nominate_id}" data-k="deduct_instant_bonus" inputmode="numeric" placeholder="0" aria-label="${ariaLabel(it)} 扣除即時獎勵" value="${moneyText(it.deduct_instant_bonus)}"></td>
+              <td class="num" data-net="${it.nominate_id}">${netCell(it.issue_bonus, it.deduct_instant_bonus)}</td>
+              <td><input class="note-in" data-p="${p.id}" data-n="${it.nominate_id}" data-k="comment" placeholder="例如：2026-05 即時獎勵" aria-label="${ariaLabel(it)} 備註" value="${esc(it.comment ?? "")}"></td>
+            </tr>`).join("")}
+          </tbody>
+        </table></div>
+        <div class="fund-actions">
+          <p class="form-error" data-fund-err="${p.id}" role="alert"></p>
+          <span class="save-status" data-fund-status="${p.id}" role="status"></span>
+          <button type="button" class="btn btn-primary" data-save-fund="${p.id}">儲存獎金計算</button>
+        </div>
+      </div>`;
+    return head + results + funds;
+  }
+
+  // 實發金額：兩者都空白時顯示「—」
+  function netCell(issue, deduct) {
+    if (!isNum(issue) && !isNum(deduct)) return "—";
+    const net = (issue || 0) - (deduct || 0);
+    return `<span class="net${net < 0 ? " neg" : ""}">${fmtMoney(net)}</span>`;
+  }
+
+  // 解析金額輸入：空白為 null；允許千分位逗號與前後空白；其他格式為 NaN
+  function parseMoney(s) {
+    const v = String(s ?? "").replace(/[,\s，]/g, "");
+    if (v === "") return null;
+    return /^\d+$/.test(v) ? Number(v) : NaN;
+  }
+
+  async function loadRanking(p) {
+    const el = cardEl(p.id);
+    const r = await api("GET", `/prizes/${p.id}/ranking`);
+    if (!r.ok) {
+      el.innerHTML = `<h3 class="rc-title">${esc(p.name)}</h3><div class="state-box error">無法載入此獎項<br><button type="button" class="btn btn-secondary" data-reload-prize="${p.id}">重新載入</button></div>`;
+      return false;
+    }
+    rankings[p.id] = r.data;
+    el.innerHTML = resultCardHTML(p, r.data);
+    return true;
+  }
+
+  async function loadPrizes() {
+    awardList.innerHTML = `<div class="state-box">載入中…</div>`;
+    const r = await api("GET", `/prizes?meeting_id=${meetingId}`);
+    if (!r.ok) {
+      awardList.innerHTML = `<div class="state-box error">無法載入獎項資料<br><button type="button" class="btn btn-secondary" id="awardReload">重新載入</button></div>`;
+      $("awardReload").addEventListener("click", loadPrizes);
+      return;
+    }
+    prizes = [...(r.data || [])].sort((a, b) => a.id - b.id);
+    if (!prizes.length) { awardList.innerHTML = `<div class="state-box">此會議尚無獎項</div>`; return; }   // VDR13
+    awardList.innerHTML = prizes.map(p => `<article class="project info-card result-card" data-prize="${p.id}"><div class="state-box">載入中…</div></article>`).join("");
+    // VD5：各獎項同時查詢，資料到齊後各自顯示
+    await Promise.all(prizes.map(loadRanking));
+  }
+
+  // 輸入時只更新該列的實發金額，不更新預算總覽（VDQ6）
+  awardList.addEventListener("input", e => {
+    const t = e.target.closest("[data-k]"); if (!t) return;
+    const card = cardEl(t.dataset.p);
+    card.querySelector(`[data-fund-status="${t.dataset.p}"]`).textContent = "";
+    t.removeAttribute("aria-invalid");
+    if (t.dataset.k === "comment") return;
+    const val = k => parseMoney(card.querySelector(`[data-n="${t.dataset.n}"][data-k="${k}"]`).value);
+    const issue = val("issue_bonus"), deduct = val("deduct_instant_bonus");
+    card.querySelector(`[data-net="${t.dataset.n}"]`).innerHTML =
+      Number.isNaN(issue) || Number.isNaN(deduct) ? "—" : netCell(issue, deduct);
+  });
+  // 離開欄位時加上千分位
+  awardList.addEventListener("change", e => {
+    const t = e.target.closest(".money"); if (!t) return;
+    const v = parseMoney(t.value);
+    if (v !== null && !Number.isNaN(v)) t.value = fmtMoney(v);
+  });
+
+  // 儲存獎金計算：PUT /prizes/{prize_id}/bonuses，全部成功或全部失敗（VDQ2）
+  async function saveFunds(pid) {
+    if (savingPrize.has(pid)) return;   // VDR10
+    const card = cardEl(pid), data = rankings[pid];
+    const errBox = card.querySelector(`[data-fund-err="${pid}"]`);
+    const status = card.querySelector(`[data-fund-status="${pid}"]`);
+    const btn = card.querySelector(`[data-save-fund="${pid}"]`);
+    errBox.textContent = ""; status.textContent = "";
+    card.querySelectorAll("[data-k]").forEach(i => i.removeAttribute("aria-invalid"));
+
+    const no = rowLabels(data.items);
+    const input = (n, k) => card.querySelector(`[data-n="${n}"][data-k="${k}"]`);
+    const items = [], errors = [];
+    for (const it of data.items) {
+      const n = it.nominate_id;
+      const issue = parseMoney(input(n, "issue_bonus").value);
+      const deduct = parseMoney(input(n, "deduct_instant_bonus").value);
+      const comment = input(n, "comment").value.trim() || null;
+      // VDR6：前端檢查
+      const bad = [];
+      if (Number.isNaN(issue)) { bad.push("核定獎金須為 0 以上的整數"); input(n, "issue_bonus").setAttribute("aria-invalid", "true"); }
+      if (Number.isNaN(deduct)) { bad.push("扣除即時獎勵須為 0 以上的整數"); input(n, "deduct_instant_bonus").setAttribute("aria-invalid", "true"); }
+      if (!bad.length && (deduct || 0) > (issue || 0)) { bad.push("扣除即時獎勵不得大於核定獎金"); input(n, "deduct_instant_bonus").setAttribute("aria-invalid", "true"); }
+      if (bad.length) { errors.push(`${no[n]}：${bad.join("、")}`); continue; }
+      // VDR5：只送出有修改的欄位
+      const change = {};
+      if (issue !== (it.issue_bonus ?? null)) change.issue_bonus = issue;
+      if (deduct !== (it.deduct_instant_bonus ?? null)) change.deduct_instant_bonus = deduct;
+      if (comment !== (it.comment || null)) change.comment = comment;
+      if (Object.keys(change).length) items.push({ nominate_id: n, ...change });
+    }
+    if (errors.length) { errBox.textContent = errors.join("\n"); return; }
+    if (!items.length) { status.textContent = "已儲存"; return; }
+
+    savingPrize.add(pid); btn.disabled = true; btn.textContent = "儲存中…";
+    const r = await api("PUT", `/prizes/${pid}/bonuses`, { items });
+    savingPrize.delete(pid); btn.disabled = false; btn.textContent = "儲存獎金計算";
+    if (!r.ok) {
+      // 失敗時資料庫沒有任何修改，保留所有輸入
+      if (r.kind === "rule" && r.status === 404) {
+        errBox.textContent = "此獎項已不存在，請重新載入";
+      } else if (r.kind === "rule") {
+        const msg = RULE_MESSAGES[r.message] || r.message || "請檢查輸入內容";
+        const ids = r.data?.nominate_ids || [];
+        ids.forEach(n => card.querySelectorAll(`[data-n="${n}"][data-k]`).forEach(i => {
+          if (i.dataset.k !== "comment") i.setAttribute("aria-invalid", "true");
+        }));
+        const known = ids.filter(n => no[n]);
+        errBox.textContent = known.length && r.message === "deduct_instant_bonus cannot be greater than issue_bonus"
+          ? known.map(n => `${no[n]}：${msg}`).join("\n") : msg;
+      } else if (r.kind === "validation") {
+        const lines = r.errors.map(err => {
+          const loc = err.loc || [];
+          const item = Number.isInteger(loc[2]) ? items[loc[2]] : null;
+          if (item && loc[3]) input(item.nominate_id, loc[3])?.setAttribute("aria-invalid", "true");
+          return item ? `${no[item.nominate_id]}：格式不正確` : "資料格式不正確";
+        });
+        errBox.textContent = [...new Set(lines)].join("\n");
+      } else {
+        errBox.textContent = serverMessage(r, "儲存");
+      }
+      return;
+    }
+    // VDR7：重新取得該獎項與獎金彙總
+    const p = prizes.find(x => x.id === pid);
+    const [ok] = await Promise.all([loadRanking(p), loadBudget()]);
+    if (ok) cardEl(pid).querySelector(`[data-fund-status="${pid}"]`).textContent = "已儲存";
+  }
+
+  awardList.addEventListener("click", e => {
+    const save = e.target.closest("[data-save-fund]");
+    if (save) { saveFunds(Number(save.dataset.saveFund)); return; }
+    const reload = e.target.closest("[data-reload-prize]");
+    if (reload) {
+      const p = prizes.find(x => x.id === Number(reload.dataset.reloadPrize));
+      cardEl(p.id).innerHTML = `<div class="state-box">載入中…</div>`;
+      loadRanking(p);
+    }
+  });
+
+  /* ---------- 獎金預算總覽 ← GET /meetings/{id}/bonus-summary ---------- */
+  let budget = null;
+  let basis = "net";      // 剩餘預算依：net = 實發總金額、approved = 核定總金額
+
+  async function loadBudget() {
+    const r = await api("GET", `/meetings/${meetingId}/bonus-summary`);
+    if (!r.ok) {
+      $("budgetBody").hidden = true;
+      $("budgetState").hidden = false;
+      $("budgetState").className = "state-box error";
+      $("budgetState").innerHTML = `無法載入預算資料<br><button type="button" class="btn btn-secondary" id="budgetReload">重新載入</button>`;
+      $("budgetReload").addEventListener("click", loadBudget);
+      return false;
+    }
+    budget = r.data;
+    $("budgetState").hidden = true;
+    $("budgetBody").hidden = false;
+    renderBudget();
+    return true;
+  }
+
+  function renderBudget() {
+    if (!budget) return;
+    // 兩種計算依據都由前端計算，不使用後端的 remaining_budget（VD2.4）
+    const rest = basis === "net"
+      ? budget.total_budget - budget.total_net_bonus
+      : budget.total_budget - budget.total_issue_bonus;
+    $("figTotal").textContent = fmtMoney(budget.total_budget);
+    $("figNetTotal").textContent = fmtMoney(budget.total_net_bonus);
+    $("figDeducted").textContent = fmtMoney(budget.total_deduct_instant_bonus);
+    $("figRemaining").textContent = fmtMoney(rest);
+    $("figRemaining").classList.toggle("neg", rest < 0);   // VDR14
+
+    // 依實發總金額計算時不含扣除即時獎勵；依核定總金額計算時才顯示「− 扣除即時獎勵」
+    $("tileDeducted").hidden = basis === "net";
+    $("opDeducted").hidden = basis === "net";
+    document.querySelectorAll("[data-basis]").forEach(b => {
+      const on = b.dataset.basis === basis;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on);
+    });
+  }
+  document.querySelector(".seg").addEventListener("click", e => {
+    const b = e.target.closest("[data-basis]"); if (!b) return;
+    basis = b.dataset.basis;
+    renderBudget();
+  });
+
+  /* ---------- 初始化（VD5） ---------- */
+  async function init() {
+    if (meetingId === null) { showNotFound(); return; }
+    // VDR8：左側欄連結帶入會議 id
+    $("navSetting").href = `/meeting_detail?meeting_id=${meetingId}`;
+    $("navVote").href = `/vote_detail?meeting_id=${meetingId}`;
+    $("brandName").textContent = "載入中…";
+    awardList.innerHTML = `<div class="state-box">載入中…</div>`;
+
+    const r = await api("GET", `/meetings/${meetingId}`);
+    if (!r.ok) {
+      if (r.status === 404) { showNotFound(); return; }
+      showPageState(`無法載入會議資料<br><button type="button" class="btn btn-secondary" id="pageReload">重新載入</button>`, true);
+      $("pageReload").addEventListener("click", () => { $("pageState").hidden = true; $("pageBody").hidden = false; init(); });
+      return;
+    }
+    meeting = r.data;
+    $("brandName").textContent = meeting.name;
+    document.title = `計票結果｜${meeting.name}`;
+    await Promise.all([loadPrizes(), loadBudget()]);
+  }
+  init();
+})();
+</script>
+</body>
+</html>
