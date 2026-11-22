@@ -1,0 +1,16 @@
+# 不放進 Docker 映像檔的檔案
+.git
+.gitignore
+.env
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# 文件、測試紀錄與開發用檔案
+*.md
+*.html
+requirements.txt
+docker-compose.yml
+Dockerfile
+.dockerignore
+webClient/releaseNote.txt
