@@ -21,15 +21,15 @@ services:
       timeout: 5s
       retries: 10
 
-  # 伺服器啟動時會建立 Redis 連線池（core/redis.py），Redis 無法連線時伺服器不會啟動
-  redis:
-    image: redis:7
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+  # Redis 目前停用（main.py 不再建立連線池），需要時取消註解，並恢復 web 中的 REDIS_HOST、REDIS_PORT 與 depends_on
+  # redis:
+  #   image: redis:7
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 10
 
   web:
     build: .
@@ -39,13 +39,13 @@ services:
     environment:
       # 容器內以服務名稱連線，不使用 .env 中指向 localhost 的 POSTGRES_URI、REDIS_HOST
       POSTGRES_URI: postgresql+asyncpg://${POSTGRES_USER:-recognition}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-recognition_db}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      # REDIS_HOST: redis
+      # REDIS_PORT: 6379
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
+      # redis:
+      #   condition: service_healthy
 
 volumes:
   pgdata:

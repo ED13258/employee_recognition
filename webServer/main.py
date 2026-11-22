@@ -18,18 +18,20 @@ from controller.report import router as report_router
 from controller.template import router as template_router
 from core.config import STATIC_DIR
 from core.database import connect_db, disconnect_db, engine
-from core.redis import Redis
-
-redis = Redis()
+# Redis 目前沒有任何功能使用，暫時停用。部署環境（例如 Railway）不需要提供 Redis。
+# 需要時取消以下註解，並恢復 lifespan 中的兩行與 requirements.txt 中的 Redis 套件
+# from core.redis import Redis
+#
+# redis = Redis()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await redis.create_redis_pool()
-    app.state.redis = redis
+    # await redis.create_redis_pool()
+    # app.state.redis = redis
     await connect_db()
     yield
     await disconnect_db()
-    await redis.close_redis_pool()
+    # await redis.close_redis_pool()
 
 
 app = FastAPI(title="Employee Recognition API", lifespan=lifespan)
