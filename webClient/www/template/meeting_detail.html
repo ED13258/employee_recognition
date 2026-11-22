@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>會議設定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --border: #e8ebf2;
+    --text: #1a1f36;
+    --muted: #6b7280;
+    --primary: #3b6ef5;
+    --red: #e5484d;
+    --radius: 12px;
+
+    /* 右側展示區（Reporting） */
+    --panel: #f4f6f9;
+    --teal: #14b1d8;
+    --teal-soft: #e6f7fb;
+    --card-text: #2b2f3a;
+    --card-muted: #8a909c;
+    --card-line: #eef0f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  a { color: inherit; text-decoration: none; }
+  svg { display: block; }
+  button { font: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .main { flex: 1; min-width: 0; background: var(--surface); display: flex; flex-direction: column; }
+
+  /* ---------- Sidebar ---------- */
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 28px; }
+  .brand-name { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+    color: #374151; font-size: 16px; font-weight: 500;
+    transition: background .15s;
+  }
+  .nav a:hover { background: #f3f5fa; }
+  .nav a.active { background: var(--primary); color: #fff; }
+  .nav svg { width: 18px; height: 18px; }
+  .help { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 20px 12px 0; color: #374151; font-size: 16px; font-weight: 500; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 24px; padding: 22px 32px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 36px; }
+  .profile { display: flex; align-items: center; gap: 14px; }
+  .profile-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #2f3542; color: #fff; font-weight: 600; font-size: 18px;
+    display: grid; place-items: center;
+  }
+  .profile-name { font-weight: 600; font-size: 14px; color: var(--card-text); }
+  .profile-role { font-size: 14px; color: var(--card-muted); margin-top: 2px; }
+  .chevron {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #5b606b; color: #5b606b;
+    display: grid; place-items: center; margin-left: 10px; background: none; cursor: pointer;
+  }
+
+  /* ---------- Panel ---------- */
+  .panel { flex: 1; background: var(--panel); border-top-left-radius: 32px; padding: 30px 32px 40px; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid #e4e7ed; }
+  .panel-head + .grid { margin-top: 16px; }   /* 會議資訊卡片緊接在長條線下方 */
+  .add-btn {
+    width: 40px; height: 40px; border-radius: 8px; border: none; cursor: pointer;
+    background: #3b6ef5; color: #fff; display: grid; place-items: center; /* 與卡片圖示、側欄選中項目相同的藍色 */
+    box-shadow: 0 8px 18px rgba(59, 110, 245, .3);
+  }
+
+  .filters { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .filter { display: flex; align-items: center; gap: 10px; background: none; border: none; cursor: pointer; color: #3a3f4b; font-size: 14px; font-weight: 500; }
+  .filter .count {
+    min-width: 28px; height: 36px; padding: 0 14px; border-radius: 6px;
+    background: var(--surface); color: #3a3f4b; font-size: 16px; font-weight: 600;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 8px rgba(30, 40, 60, .06);
+    border: 1px solid transparent;
+  }
+  .filter.active .count { background: var(--teal-soft); color: var(--teal); border-color: var(--teal); }
+
+  /* ---------- Project cards ---------- */
+  .grid { display: grid; grid-template-columns: 1fr; gap: 44px 20px; } /* 單欄：卡片延伸到右側邊框 */
+  .project {
+    position: relative; background: var(--surface); border-radius: 24px;
+    padding: 46px 30px 26px;
+    box-shadow: 0 10px 30px rgba(30, 40, 60, .06);
+  }
+  .project-icon {
+    position: absolute; top: -24px; left: 30px;
+    width: 46px; height: 46px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    background: #3b6ef5; /* 與左側欄選中項目的藍色相同 */
+    box-shadow: 0 8px 16px rgba(59, 110, 245, .33);
+  }
+  .project h3 { font-size: 18px; font-weight: 500; color: var(--card-text); letter-spacing: .2px; margin-bottom: 10px; }
+  .meta { display: flex; align-items: center; gap: 10px; color: var(--card-muted); font-size: 12px; margin-top: 8px; }
+  .meta svg { color: #9aa0ab; flex-shrink: 0; }
+  .project-foot { border-top: 1px solid var(--card-line); margin-top: 22px; padding-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .foot-label { font-size: 12px; font-weight: 600; color: var(--card-text); }
+  .foot-label.right { text-align: left; min-width: 52px; }
+  .progress { font-size: 12px; font-weight: 600; color: var(--card-text); align-self: center; min-width: 52px; }
+
+  /* ---------- 新增會議視窗 ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(17, 24, 39, .45);
+    display: grid; place-items: center; padding: 16px;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow: auto;
+    background: var(--surface); border-radius: 16px; padding: 26px 26px 22px;
+    box-shadow: 0 24px 60px rgba(17, 24, 39, .25);
+  }
+  .modal h2 { font-size: 20px; font-weight: 700; color: var(--card-text); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 14px; font-weight: 500; color: var(--card-text); }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input {
+    font: inherit; font-size: 14px; color: var(--card-text);
+    padding: 9px 12px; border: 1px solid #d6dae3; border-radius: 8px; background: var(--surface); width: 100%;
+  }
+  .field input:focus { outline: none; border-color: #3b6ef5; box-shadow: 0 0 0 3px rgba(59, 110, 245, .15); }
+  .field input[aria-invalid="true"] { border-color: var(--red); }
+  .field-hint { font-size: 12px; color: var(--card-muted); }
+  .field-error { font-size: 12px; color: var(--red); }
+  .field-error:empty { display: none; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  .btn { height: 38px; padding: 0 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .btn-secondary { background: var(--surface); border-color: #d6dae3; color: #374151; }
+  .btn-secondary:hover { background: #f5f7fa; }
+  .btn-primary { background: #3b6ef5; color: #fff; }
+  .btn-primary:hover { background: #2f5fe0; }
+  .btn:focus-visible, .add-btn:focus-visible { outline: 2px solid #3b6ef5; outline-offset: 2px; }
+
+  /* ---------- 會議資訊卡片 ---------- */
+  .info-card { padding-top: 28px; }   /* 沒有左上角圖示，縮小上方留白 */
+  .info-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px 20px; }
+  .info-grid .span-6 { grid-column: span 6; }
+  .info-grid .span-3 { grid-column: span 3; }
+  .info-grid .span-2 { grid-column: span 2; }
+  .info-actions {
+    display: flex; align-items: center; justify-content: flex-end; gap: 14px;
+    border-top: 1px solid var(--card-line); margin-top: 24px; padding-top: 18px;
+  }
+  .save-status { font-size: 13px; color: #22a45d; }
+  .project[hidden] { display: none; }
+
+  /* ---------- 獎項卡片：提名名單（唯讀表格） ---------- */
+  .nominee-block { margin-top: 24px; }
+  .nominee-title { font-size: 14px; font-weight: 500; color: var(--card-text); margin-bottom: 10px; }
+  .table-wrap { overflow-x: auto; border: 1px solid #e4e7ed; border-radius: 10px; }
+  .nominee-table { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--card-text); }
+  .nominee-table th {
+    text-align: left; font-weight: 600; font-size: 13px; color: #5b606b;
+    background: #f7f8fb; padding: 12px 16px; border-bottom: 1px solid #e4e7ed; white-space: nowrap;
+  }
+  .nominee-table td { padding: 14px 16px; border-bottom: 1px solid var(--card-line); vertical-align: top; line-height: 1.6; }
+  .nominee-table tbody tr:last-child td { border-bottom: none; }
+  .nominee-table th:first-child, .nominee-table td:first-child,
+  .nominee-table th:last-child, .nominee-table td:last-child { width: 120px; white-space: nowrap; }
+  .award-list { display: flex; flex-direction: column; gap: 24px; }
+  .award-list[hidden] { display: none; }
+  .nominee-empty { padding: 18px 16px; font-size: 14px; color: var(--card-muted); }
+
+  /* ---------- 新增獎項視窗 ---------- */
+  .modal-lg { max-width: 680px; }
+  .field textarea {
+    font: inherit; font-size: 14px; line-height: 1.8; color: var(--card-text);
+    padding: 10px 12px; border: 1px solid #d6dae3; border-radius: 8px; background: var(--surface);
+    width: 100%; min-height: 180px; resize: vertical;
+  }
+  .field textarea::placeholder { color: #a3a9b4; }
+  .field textarea:focus { outline: none; border-color: #3b6ef5; box-shadow: 0 0 0 3px rgba(59, 110, 245, .15); }
+  .field textarea[aria-invalid="true"] { border-color: var(--red); }
+
+  /* ---------- 串接狀態 ---------- */
+  a.brand-name { color: inherit; }
+  a.brand-name:hover { color: #3b6ef5; }
+  .state-box {
+    text-align: center; padding: 40px 16px; background: var(--surface);
+    border-radius: 16px; color: var(--card-muted); font-size: 14px; line-height: 1.8;
+  }
+  .state-box.error { color: var(--red); }
+  .state-box a, .state-box .btn { display: inline-block; margin-top: 12px; }
+  .state-box a { color: #3b6ef5; text-decoration: underline; }
+  .field input[readonly] { background: #f3f5fa; color: var(--card-muted); cursor: not-allowed; }
+  .lock-hint { font-size: 13px; color: #b45309; background: #fff7e6; border-radius: 8px; padding: 8px 12px; margin-bottom: 16px; }
+  .lock-hint[hidden] { display: none; }
+  .form-error { font-size: 13px; color: var(--red); margin-top: 14px; white-space: pre-line; }
+  .form-error:empty { display: none; }
+  .info-actions .form-error { margin: 0; margin-right: auto; }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .add-btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .sidebar { display: none; }
+    .topbar { padding: 16px; }
+    .panel { padding: 24px 16px 32px; border-top-left-radius: 20px; }
+    .topbar-right { gap: 20px; }
+  }
+  @media (max-width: 560px) {
+    .profile-text { display: none; }
+    .form-grid { grid-template-columns: 1fr; }
+    .info-grid { grid-template-columns: 1fr; }
+    .info-grid .span-6, .info-grid .span-3, .info-grid .span-2 { grid-column: auto; }
+    .modal { padding: 22px 18px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <!-- MDQ4：會議名稱連回會議總覽 -->
+      <a class="brand-name" id="brandName" href="/" title="返回會議總覽"></a>
+    </div>
+
+    <nav class="nav">
+      <a href="#" id="navSetting" class="active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"/><path d="M12 15v3M8 21l4-3 4 3M7 8h6M7 11h10"/></svg>
+        會議設定</a>
+      <a href="#" id="navVote">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        計票結果</a>
+    </nav>
+
+    <a href="#" class="help">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg>
+      說明與支援
+    </a>
+  </aside>
+
+  <!-- ================= Main ================= -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="topbar-right">
+        <div class="profile">
+          <div class="profile-avatar">李</div>
+          <div class="profile-text">
+            <div class="profile-name">李佩珊</div>
+            <div class="profile-role">人資室</div>
+          </div>
+          <button class="chevron" aria-label="Account menu">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <!-- 找不到會議或載入失敗時，只顯示這個區塊（MDR1） -->
+      <div id="pageState" class="state-box" hidden></div>
+
+      <div id="pageBody">
+        <div class="panel-head">
+          <div class="filters" id="filters"></div>
+          <button class="add-btn" id="addAwardBtn" aria-label="新增獎項" aria-haspopup="dialog">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+
+        <div class="grid">
+          <article class="project info-card" id="infoCard" hidden>
+            <form id="infoForm" novalidate>
+              <p class="lock-hint" id="lockHint" hidden>投票已開始，提名通過門檻比例與投票日期無法修改。</p>
+              <div class="info-grid">
+                <div class="field span-6">
+                  <label for="iName">會議名稱<span class="req">*</span></label>
+                  <input id="iName" type="text" maxlength="100" autocomplete="off" aria-describedby="iNameErr">
+                  <span class="field-error" id="iNameErr"></span>
+                </div>
+                <div class="field span-2">
+                  <label for="iJudges">評委人數</label>
+                  <!-- MDR12：評委人數建立後無法修改 -->
+                  <input id="iJudges" type="number" readonly aria-describedby="iJudgesHint">
+                  <span class="field-hint" id="iJudgesHint">建立後無法修改</span>
+                </div>
+                <div class="field span-2">
+                  <label for="iBudget">總預算<span class="req">*</span></label>
+                  <input id="iBudget" type="number" min="0" step="1" inputmode="numeric" aria-describedby="iBudgetErr">
+                  <span class="field-error" id="iBudgetErr"></span>
+                </div>
+                <div class="field span-2">
+                  <label for="iProportion">提名通過門檻比例<span class="req">*</span></label>
+                  <input id="iProportion" type="number" min="0.01" max="1" step="0.01" inputmode="decimal" aria-describedby="iProportionErr">
+                  <span class="field-error" id="iProportionErr"></span>
+                </div>
+                <div class="field span-3">
+                  <label for="iKickoff">投票開始日期<span class="req">*</span></label>
+                  <input id="iKickoff" type="date" aria-describedby="iKickoffErr">
+                  <span class="field-error" id="iKickoffErr"></span>
+                </div>
+                <div class="field span-3">
+                  <label for="iDeadline">投票截止日期<span class="req">*</span></label>
+                  <input id="iDeadline" type="date" aria-describedby="iDeadlineErr">
+                  <span class="field-error" id="iDeadlineErr"></span>
+                </div>
+              </div>
+              <div class="info-actions">
+                <p class="form-error" id="infoFormErr" role="alert"></p>
+                <span class="save-status" id="infoStatus" role="status"></span>
+                <button type="submit" class="btn btn-primary" id="infoSubmit">儲存會議資訊</button>
+              </div>
+            </form>
+          </article>
+
+          <!-- 獎項分頁：每個獎項一張卡片，由下方程式依資料產生 -->
+          <div class="award-list" id="awardCard"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= 新增獎項視窗 ================= -->
+<div class="modal-backdrop" id="awardModal" hidden>
+  <div class="modal modal-lg" role="dialog" aria-modal="true" aria-labelledby="awardModalTitle">
+    <h2 id="awardModalTitle">新增獎項</h2>
+    <form id="awardModalForm" novalidate>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="newAwardName">獎項名稱<span class="req">*</span></label>
+          <input id="newAwardName" type="text" maxlength="100" autocomplete="off" aria-describedby="newAwardNameErr">
+          <span class="field-error" id="newAwardNameErr"></span>
+        </div>
+        <div class="field full">
+          <label for="newAwardList">提名名單（每行一件）</label>
+          <textarea id="newAwardList" rows="7" spellcheck="false"
+            placeholder="高瑞宏 推動溫室氣體盤查查證機構通過 TAF 認可與相關業務開發 李品辰"
+            aria-describedby="newAwardListHint newAwardListErr"></textarea>
+          <span class="field-hint" id="newAwardListHint">格式：上司 提名名稱 下屬，中間以空白隔開。第一段為上司、最後一段為下屬，中間全部視為提名名稱。</span>
+          <span class="field-error" id="newAwardListErr"></span>
+        </div>
+      </div>
+      <p class="form-error" id="newAwardFormErr" role="alert"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="awardModalCancel">取消</button>
+        <button type="submit" class="btn btn-primary" id="awardSubmit">確定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- 共用：呼叫 API（與 meeting.html 相同，MDQ5） ----------
+     - 200：{ ok: true, data }
+     - 400、404：{ ok: false, kind: "rule", status, message, data }
+     - 422：{ ok: false, kind: "validation", errors }
+     - 500 或網路錯誤：{ ok: false, kind: "server" | "network", errorId } */
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+    let json = null;
+    try { json = await res.json(); } catch { /* 回應不是 JSON */ }
+    if (res.ok) return { ok: true, data: json?.data };
+    if (res.status === 422) return { ok: false, kind: "validation", status: 422, errors: json?.detail || [] };
+    if (res.status >= 500) return { ok: false, kind: "server", status: res.status, errorId: json?.data?.error_id };
+    return { ok: false, kind: "rule", status: res.status, message: json?.message || "", data: json?.data };
+  }
+  const serverMessage = r => r.kind === "network"
+    ? "無法連線到伺服器，請確認網路後再試。"
+    : `操作失敗，請稍後再試${r.errorId ? `（錯誤代碼：${r.errorId}）` : ""}`;
+
+  // 後端英文訊息 → 中文（MD4）
+  const RULE_MESSAGES = {
+    "Voting has started; these fields can no longer be modified": "投票已開始，這些欄位無法修改",
+    "voting_kickoff must be earlier than voting_deadline": "投票截止時間須晚於開始時間",
+    "Voting has started; prizes can no longer be added": "投票已開始，無法新增獎項",
+    "Voting has started; nominations can no longer be added": "投票已開始，無法新增提名",
+  };
+  const ruleText = r => RULE_MESSAGES[r.message] || r.message || "請檢查輸入內容";
+
+  // 422 錯誤類型 → 中文
+  function validationText(err, label) {
+    const c = err.ctx || {};
+    switch (err.type) {
+      case "missing": case "string_too_short": return `請輸入${label}`;
+      case "greater_than_equal": return `須大於或等於 ${c.ge}`;
+      case "greater_than": return `須大於 ${c.gt}`;
+      case "less_than_equal": return `須小於或等於 ${c.le}`;
+      case "less_than": return `須小於 ${c.lt}`;
+      case "int_parsing": case "int_type": case "int_from_float": return "須為整數";
+      case "float_parsing": case "float_type": return "須為數字";
+      default: return "格式不正確";
+    }
+  }
+
+  /* ---------- 共用：日期（瀏覽器所在時區） ---------- */
+  const pad = n => String(n).padStart(2, "0");
+  // YYYY-MM-DD → timestamp（秒）；開始為當天 00:00:00，截止為當天 23:59:59
+  function dateToTs(value, endOfDay) {
+    const [y, m, d] = value.split("-").map(Number);
+    const t = endOfDay ? new Date(y, m - 1, d, 23, 59, 59) : new Date(y, m - 1, d, 0, 0, 0);
+    return Math.floor(t.getTime() / 1000);
+  }
+  // timestamp（秒）→ YYYY-MM-DD（日期欄位用）
+  function tsToInput(ts) {
+    const t = new Date(ts * 1000);
+    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
+  }
+
+  const setError = (id, msg) => {
+    $(id + "Err").textContent = msg;
+    if (msg) $(id).setAttribute("aria-invalid", "true"); else $(id).removeAttribute("aria-invalid");
+  };
+  const labelOf = id => document.querySelector(`label[for="${id}"]`).firstChild.textContent.trim();
+
+  /* ---------- 會議 id（MDR1） ---------- */
+  const rawId = new URLSearchParams(location.search).get("meeting_id");
+  const meetingId = /^[1-9]\d*$/.test(rawId || "") ? Number(rawId) : null;
+
+  /* ---------- 頁面狀態 ---------- */
+  let meeting = null;          // GET /meetings/{id}
+  let loaded = {};             // 會議資訊表單載入時的值，用來找出有變更的欄位（MDR3）
+  let prizes = [];             // [{ ...prize, nominations: [...] }]
+  let votingStarted = false;
+
+  function showPageState(html, isError) {
+    $("pageBody").hidden = true;
+    $("pageState").hidden = false;
+    $("pageState").className = "state-box" + (isError ? " error" : "");
+    $("pageState").innerHTML = html;
+  }
+  function showNotFound() {
+    $("brandName").textContent = "會議總覽";
+    showPageState(`找不到此會議<br><a href="/">返回會議總覽</a>`, true);
+  }
+
+  /* ---------- 分頁切換 ---------- */
+  (function () {
+    const filters = [
+      { count: "獎項", panel: "awardCard" },
+      { count: "會議資訊", panel: "infoCard" },
+    ];
+    const box = $("filters");
+    box.innerHTML = filters.map((f, i) => `
+      <button class="filter${i === 0 ? " active" : ""}" aria-pressed="${i === 0}" aria-controls="${f.panel}" data-panel="${f.panel}">
+        <span class="count">${f.count}</span>
+      </button>`).join("");
+    box.addEventListener("click", e => {
+      const btn = e.target.closest(".filter"); if (!btn) return;
+      box.querySelectorAll(".filter").forEach(b => {
+        const on = b === btn;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", on);
+        $(b.dataset.panel).hidden = !on;
+      });
+    });
+  })();
+
+  /* ---------- 會議：GET /meetings/{id} ---------- */
+  async function loadMeeting() {
+    const r = await api("GET", `/meetings/${meetingId}`);
+    if (!r.ok) {
+      if (r.status === 404) showNotFound();
+      else showPageState(`無法載入會議資料<br><button type="button" class="btn btn-secondary" id="pageReload">重新載入</button>`, true);
+      $("pageReload")?.addEventListener("click", () => { $("pageState").hidden = true; $("pageBody").hidden = false; init(); });
+      return false;
+    }
+    meeting = r.data;
+    votingStarted = Math.floor(Date.now() / 1000) >= meeting.voting_kickoff;
+    fillMeeting();
+    return true;
+  }
+
+  function fillMeeting() {
+    $("brandName").textContent = meeting.name;
+    document.title = `會議設定｜${meeting.name}`;
+    loaded = {
+      iName: meeting.name,
+      iBudget: String(meeting.total_budget),
+      iProportion: String(meeting.proportion),
+      iKickoff: tsToInput(meeting.voting_kickoff),
+      iDeadline: tsToInput(meeting.voting_deadline),
+    };
+    Object.entries(loaded).forEach(([id, v]) => { $(id).value = v; });
+    $("iJudges").value = meeting.total_judges;
+
+    // MDR5、MDQ6：投票開始後鎖定門檻比例與日期
+    ["iProportion", "iKickoff", "iDeadline"].forEach(id => { $(id).readOnly = votingStarted; });
+    $("lockHint").hidden = !votingStarted;
+    // MDR6：投票開始後停用新增獎項
+    $("addAwardBtn").disabled = votingStarted;
+    $("addAwardBtn").title = votingStarted ? "投票已開始，無法新增獎項" : "";
+  }
+
+  /* ---------- 會議資訊：PUT /meetings ---------- */
+  const INFO_FIELDS = ["iName", "iBudget", "iProportion", "iKickoff", "iDeadline"];
+  const INFO_API = { iName: "name", iBudget: "total_budget", iProportion: "proportion", iKickoff: "voting_kickoff", iDeadline: "voting_deadline" };
+  const INFO_ID = Object.fromEntries(Object.entries(INFO_API).map(([k, v]) => [v, k]));
+  let infoSaving = false;
+
+  function clearInfoErrors() { INFO_FIELDS.forEach(id => setError(id, "")); $("infoFormErr").textContent = ""; }
+
+  function validateInfo() {
+    clearInfoErrors();
+    const v = id => $(id).value;
+    const errors = {};
+    if (!v("iName").trim()) errors.iName = "請輸入會議名稱";
+    const budget = Number(v("iBudget"));
+    if (v("iBudget") === "") errors.iBudget = "請輸入總預算";
+    else if (!Number.isInteger(budget) || budget < 0) errors.iBudget = "須為 0 以上的整數";
+    const proportion = Number(v("iProportion"));
+    if (v("iProportion") === "") errors.iProportion = "請輸入提名通過門檻比例";
+    else if (!(proportion > 0 && proportion <= 1)) errors.iProportion = "須大於 0，且最多為 1";
+    if (!v("iKickoff")) errors.iKickoff = "請選擇投票開始日期";
+    if (!v("iDeadline")) errors.iDeadline = "請選擇投票截止日期";
+    else if (v("iKickoff") && v("iDeadline") < v("iKickoff")) errors.iDeadline = "截止日期不可早於開始日期";
+    Object.entries(errors).forEach(([id, msg]) => setError(id, msg));
+    const first = INFO_FIELDS.find(id => errors[id]);
+    if (first) { $(first).focus(); return false; }
+    return true;
+  }
+
+  // MDR3：只送出與載入值不同的欄位。日期以字串比較，避免開始時間不是 00:00 時被誤判為變更
+  function changedInfo() {
+    const body = {};
+    for (const id of INFO_FIELDS) {
+      const cur = id === "iName" ? $(id).value.trim() : $(id).value;
+      if (cur === loaded[id]) continue;
+      if (id === "iName") body.name = cur;
+      else if (id === "iBudget") body.total_budget = Number(cur);
+      else if (id === "iProportion") body.proportion = Number(cur);
+      else if (id === "iKickoff") body.voting_kickoff = dateToTs(cur, false);
+      else if (id === "iDeadline") body.voting_deadline = dateToTs(cur, true);
+    }
+    return body;
+  }
+
+  $("infoForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (infoSaving) return;
+    $("infoStatus").textContent = "";
+    if (!validateInfo()) return;
+    const body = changedInfo();
+    if (!Object.keys(body).length) { $("infoStatus").textContent = "已儲存"; return; }   // MDR4
+    infoSaving = true; $("infoSubmit").disabled = true; $("infoSubmit").textContent = "儲存中…";
+    const r = await api("PUT", "/meetings", { id: meetingId, ...body });
+    infoSaving = false; $("infoSubmit").disabled = false; $("infoSubmit").textContent = "儲存會議資訊";
+    if (!r.ok) {
+      if (r.kind === "rule" && r.data?.locked_fields) {
+        r.data.locked_fields.forEach(f => INFO_ID[f] && setError(INFO_ID[f], "投票已開始，無法修改"));
+        $("infoFormErr").textContent = ruleText(r);
+      } else if (r.kind === "rule") {
+        $("infoFormErr").textContent = ruleText(r);
+      } else if (r.kind === "validation") {
+        r.errors.forEach(err => { const id = INFO_ID[err.loc?.[1]]; if (id) setError(id, validationText(err, labelOf(id))); });
+      } else {
+        $("infoFormErr").textContent = serverMessage(r);
+      }
+      return;
+    }
+    // MDR7：重新取得會議，更新左側欄名稱與載入值
+    await loadMeeting();
+    $("infoStatus").textContent = "已儲存";
+  });
+  $("infoForm").addEventListener("input", () => { $("infoStatus").textContent = ""; });
+
+  /* ---------- 獎項：GET /prizes、GET /nominations ---------- */
+  const awardList = $("awardCard");
+
+  async function loadPrizes() {
+    awardList.innerHTML = `<div class="state-box">載入中…</div>`;
+    const r = await api("GET", `/prizes?meeting_id=${meetingId}`);
+    if (!r.ok) return showAwardError();
+    const list = [...(r.data || [])].sort((a, b) => a.id - b.id);
+    // MD5：各獎項同時查詢提名名單
+    const noms = await Promise.all(list.map(p => api("GET", `/nominations?prize_id=${p.id}`)));
+    if (noms.some(n => !n.ok)) return showAwardError();
+    prizes = list.map((p, i) => ({ ...p, nominations: [...(noms[i].data || [])].sort((a, b) => a.id - b.id) }));
+    renderAwards();
+  }
+  function showAwardError() {
+    awardList.innerHTML = `<div class="state-box error">無法載入獎項資料<br><button type="button" class="btn btn-secondary" id="awardReload">重新載入</button></div>`;
+    $("awardReload").addEventListener("click", loadPrizes);
+  }
+
+  const awardCardHTML = p => `
+    <article class="project info-card">
+      <form class="award-form" data-id="${p.id}" novalidate>
+        <div class="info-grid">
+          <div class="field span-3">
+            <label for="aName-${p.id}">獎項名稱<span class="req">*</span></label>
+            <input id="aName-${p.id}" type="text" maxlength="100" autocomplete="off" value="${esc(p.name)}" aria-describedby="aName-${p.id}Err">
+            <span class="field-error" id="aName-${p.id}Err"></span>
+          </div>
+        </div>
+        <div class="nominee-block">
+          <div class="nominee-title">提名名單</div>
+          <div class="table-wrap">
+            ${p.nominations.length ? `<table class="nominee-table">
+              <thead><tr><th scope="col">上司</th><th scope="col">提名名稱</th><th scope="col">下屬</th></tr></thead>
+              <tbody>${p.nominations.map(n => `<tr><td>${esc(n.manager_name)}</td><td>${esc(n.name)}</td><td>${esc(n.employee_name)}</td></tr>`).join("")}</tbody>
+            </table>` : `<div class="nominee-empty">尚無提名</div>`}
+          </div>
+        </div>
+        <div class="info-actions">
+          <p class="form-error" id="aFormErr-${p.id}" role="alert"></p>
+          <span class="save-status" id="aStatus-${p.id}" role="status"></span>
+          <button type="submit" class="btn btn-primary" id="aSubmit-${p.id}">儲存獎項</button>
+        </div>
+      </form>
+    </article>`;
+
+  function renderAwards() {
+    awardList.innerHTML = prizes.length
+      ? prizes.map(awardCardHTML).join("")
+      : `<div class="state-box">尚未建立獎項，按右上角＋新增</div>`;
+  }
+
+  // 儲存獎項名稱：PUT /prizes
+  const savingPrize = new Set();
+  awardList.addEventListener("submit", async e => {
+    const f = e.target.closest(".award-form"); if (!f) return;
+    e.preventDefault();
+    const id = Number(f.dataset.id);
+    if (savingPrize.has(id)) return;
+    const input = $("aName-" + id), status = $("aStatus-" + id), formErr = $("aFormErr-" + id), btn = $("aSubmit-" + id);
+    status.textContent = ""; formErr.textContent = "";
+    const name = input.value.trim();
+    if (!name) { setError(input.id, "請輸入獎項名稱"); input.focus(); return; }
+    setError(input.id, "");
+    savingPrize.add(id); btn.disabled = true; btn.textContent = "儲存中…";
+    const r = await api("PUT", "/prizes", { id, name });
+    savingPrize.delete(id); btn.disabled = false; btn.textContent = "儲存獎項";
+    if (!r.ok) {
+      if (r.kind === "validation") setError(input.id, validationText(r.errors[0] || {}, "獎項名稱"));
+      else formErr.textContent = r.kind === "rule" ? ruleText(r) : serverMessage(r);
+      return;
+    }
+    input.value = r.data.name;
+    const p = prizes.find(x => x.id === id); if (p) p.name = r.data.name;
+    status.textContent = "已儲存";
+  });
+  awardList.addEventListener("input", e => {
+    const f = e.target.closest(".award-form"); if (f) $("aStatus-" + f.dataset.id).textContent = "";
+  });
+
+  /* ---------- 新增獎項：POST /prizes（含提名名單，全部成功或全部失敗，MD6） ---------- */
+  const modal = $("awardModal"), modalForm = $("awardModalForm"), addBtn = $("addAwardBtn"), awardSubmit = $("awardSubmit");
+  let creating = false;
+
+  function clearModalErrors() { setError("newAwardName", ""); setError("newAwardList", ""); $("newAwardFormErr").textContent = ""; }
+  function openModal() {
+    if (addBtn.disabled) return;
+    modalForm.reset();
+    clearModalErrors();
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    $("newAwardName").focus();
+  }
+  function closeModal() {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    addBtn.focus();
+  }
+
+  // 解析提名名單：每行一件，以空白（含全形空白、Tab）分段。
+  // 第一段為上司、最後一段為下屬，中間全部為提名名稱。保留原始行號，用來顯示後端錯誤
+  function parseNominees(text) {
+    const nominees = [], lineNos = [], badLines = [];
+    text.split(/\r?\n/).forEach((line, idx) => {
+      const parts = line.trim().split(/[\s　]+/).filter(Boolean);
+      if (!parts.length) return;                       // 略過空行
+      if (parts.length < 3) { badLines.push(idx + 1); return; }
+      nominees.push({ manager_name: parts[0], name: parts.slice(1, -1).join(" "), employee_name: parts[parts.length - 1] });
+      lineNos.push(idx + 1);
+    });
+    return { nominees, lineNos, badLines };
+  }
+  const NOM_LABEL = { manager_name: "上司名稱", name: "提名名稱", employee_name: "下屬名稱" };
+
+  addBtn.addEventListener("click", openModal);
+  $("awardModalCancel").addEventListener("click", () => { if (!creating) closeModal(); });
+  modalForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (creating) return;
+    clearModalErrors();
+    const name = $("newAwardName").value.trim();
+    const { nominees, lineNos, badLines } = parseNominees($("newAwardList").value);
+    if (!name) setError("newAwardName", "請輸入獎項名稱");
+    if (badLines.length) setError("newAwardList", `第 ${badLines.join("、")} 行格式不正確，須為「上司 提名名稱 下屬」，中間以空白隔開`);
+    if (!name) { $("newAwardName").focus(); return; }
+    if (badLines.length) { $("newAwardList").focus(); return; }
+
+    creating = true; awardSubmit.disabled = true; awardSubmit.textContent = "儲存中…";
+    const r = await api("POST", "/prizes", { name, meeting_id: meetingId, nominations: nominees });
+    creating = false; awardSubmit.disabled = false; awardSubmit.textContent = "確定";
+    if (!r.ok) {
+      // 失敗時後端不會建立任何資料，視窗保留輸入內容，修正後可直接重送
+      if (r.kind === "validation") {
+        const lines = [];
+        for (const err of r.errors) {
+          const loc = err.loc || [];
+          if (loc[1] === "name") setError("newAwardName", validationText(err, "獎項名稱"));
+          else if (loc[1] === "nominations" && Number.isInteger(loc[2])) {
+            lines.push(`第 ${lineNos[loc[2]]} 行：${NOM_LABEL[loc[3]] || "內容"}${err.type === "string_too_short" || err.type === "missing" ? "不可空白" : "格式不正確"}`);
+          } else $("newAwardFormErr").textContent = "資料格式不正確，請檢查後再試。";
+        }
+        if (lines.length) { setError("newAwardList", lines.join("\n")); $("newAwardList").focus(); }
+      } else if (r.kind === "rule") {
+        $("newAwardFormErr").textContent = ruleText(r);
+      } else {
+        $("newAwardFormErr").textContent = serverMessage(r);
+      }
+      return;
+    }
+    closeModal();
+    document.querySelector('.filter[data-panel="awardCard"]').click();   // 切到「獎項」分頁
+    await loadPrizes();                                                   // MDR8
+  });
+
+  // Esc 關閉；Tab 只在視窗內循環
+  modal.addEventListener("keydown", e => {
+    if (e.key === "Escape") { e.preventDefault(); if (!creating) closeModal(); return; }
+    if (e.key !== "Tab") return;
+    const focusable = [...modal.querySelectorAll("input, textarea, button:not([disabled])")];
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  /* ---------- 初始化 ---------- */
+  async function init() {
+    if (meetingId === null) { showNotFound(); return; }
+    // MDR9、MDQ3：左側欄連結帶入會議 id
+    $("navSetting").href = `/meeting_detail?meeting_id=${meetingId}`;
+    $("navVote").href = `/vote_detail?meeting_id=${meetingId}`;
+    $("brandName").textContent = "載入中…";
+    awardList.innerHTML = `<div class="state-box">載入中…</div>`;
+    if (!(await loadMeeting())) return;
+    await loadPrizes();
+  }
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>會議總覽</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --border: #e8ebf2;
+    --text: #1a1f36;
+    --muted: #6b7280;
+    --primary: #3b6ef5;
+    --red: #e5484d;
+    --radius: 12px;
+
+    /* 右側展示區（Reporting） */
+    --panel: #f4f6f9;
+    --teal: #14b1d8;
+    --teal-soft: #e6f7fb;
+    --card-text: #2b2f3a;
+    --card-muted: #8a909c;
+    --card-line: #eef0f4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+  }
+  a { color: inherit; text-decoration: none; }
+  svg { display: block; }
+  button { font: inherit; }
+
+  /* ---------- Layout ---------- */
+  .app { display: flex; min-height: 100vh; }
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .main { flex: 1; min-width: 0; background: var(--surface); display: flex; flex-direction: column; }
+
+  /* ---------- Sidebar ---------- */
+  .brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 28px; }
+  .brand-name { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+  .nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav a {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 8px;
+    color: #374151; font-size: 16px; font-weight: 500;
+    transition: background .15s;
+  }
+  .nav a:hover { background: #f3f5fa; }
+  .nav a.active { background: var(--primary); color: #fff; }
+  .nav svg { width: 18px; height: 18px; }
+  .help { margin-top: auto; display: flex; align-items: center; gap: 12px; padding: 20px 12px 0; color: #374151; font-size: 16px; font-weight: 500; }
+
+  /* ---------- Top bar ---------- */
+  .topbar { display: flex; align-items: center; gap: 24px; padding: 22px 32px; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 36px; }
+  .profile { display: flex; align-items: center; gap: 14px; }
+  .profile-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: #2f3542; color: #fff; font-weight: 600; font-size: 18px;
+    display: grid; place-items: center;
+  }
+  .profile-name { font-weight: 600; font-size: 14px; color: var(--card-text); }
+  .profile-role { font-size: 14px; color: var(--card-muted); margin-top: 2px; }
+  .chevron {
+    width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid #5b606b; color: #5b606b;
+    display: grid; place-items: center; margin-left: 10px; background: none; cursor: pointer;
+  }
+
+  /* ---------- Panel ---------- */
+  .panel { flex: 1; background: var(--panel); border-top-left-radius: 32px; padding: 30px 32px 40px; }
+  .panel-head { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid #e4e7ed; }
+  .panel-title { font-size: 22px; font-weight: 700; color: var(--card-text); }
+  .add-btn {
+    width: 40px; height: 40px; border-radius: 8px; border: none; cursor: pointer;
+    background: #3b6ef5; color: #fff; display: grid; place-items: center; /* 與卡片圖示、側欄選中項目相同的藍色 */
+    box-shadow: 0 8px 18px rgba(59, 110, 245, .3);
+  }
+
+  .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0 34px; flex-wrap: wrap; }
+  .filters { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .filter { display: flex; align-items: center; gap: 10px; background: none; border: none; cursor: pointer; color: #3a3f4b; font-size: 14px; font-weight: 500; }
+  .filter .count {
+    min-width: 28px; height: 28px; padding: 0 6px; border-radius: 6px;
+    background: var(--surface); color: #3a3f4b; font-size: 12px; font-weight: 600;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 8px rgba(30, 40, 60, .06);
+    border: 1px solid transparent;
+  }
+  .filter.active .count { background: var(--teal-soft); color: var(--teal); border-color: var(--teal); }
+
+  /* ---------- Project cards ---------- */
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 44px 20px; }
+  .project {
+    position: relative; background: var(--surface); border-radius: 24px;
+    padding: 46px 30px 26px;
+    box-shadow: 0 10px 30px rgba(30, 40, 60, .06);
+  }
+  .project-icon {
+    position: absolute; top: -24px; left: 30px;
+    width: 46px; height: 46px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    background: #3b6ef5; /* 與左側欄選中項目的藍色相同 */
+    box-shadow: 0 8px 16px rgba(59, 110, 245, .33);
+  }
+  .project h3 { font-size: 18px; font-weight: 500; color: var(--card-text); letter-spacing: .2px; margin-bottom: 10px; }
+  .meta { display: flex; align-items: center; gap: 10px; color: var(--card-muted); font-size: 12px; margin-top: 8px; }
+  .meta svg { color: #9aa0ab; flex-shrink: 0; }
+  .project-foot { border-top: 1px solid var(--card-line); margin-top: 22px; padding-top: 16px; display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; }
+  .foot-label { font-size: 12px; font-weight: 600; color: var(--card-text); }
+  .foot-label.right { text-align: left; min-width: 52px; }
+  .progress { font-size: 12px; font-weight: 600; color: var(--card-text); align-self: center; min-width: 52px; }
+  /* 卡片可點擊，導到會議設定頁 */
+  /* 整張卡片可點擊：連結以 ::after 覆蓋整張卡片；複製按鈕疊在連結上方，點擊時不會進入會議設定 */
+  article.project { transition: box-shadow .15s, transform .15s; }
+  article.project:hover { box-shadow: 0 14px 34px rgba(30, 40, 60, .12); transform: translateY(-2px); }
+  article.project:has(.card-link:focus-visible) { outline: 2px solid #3b6ef5; outline-offset: 3px; }
+  .card-link { color: inherit; }
+  .card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+  .card-link:focus-visible { outline: none; }
+  .meta b { font-weight: 600; color: var(--card-text); }
+  /* 選票網址：只顯示複製按鈕 */
+  .vote-url { display: flex; align-items: center; min-width: 0; }
+  .copy-btn {
+    position: relative; z-index: 1; flex-shrink: 0;
+    height: 26px; padding: 0 10px; border-radius: 6px; border: 1px solid #d6dae3;
+    background: var(--surface); color: #374151; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .copy-btn:hover { background: #f5f7fa; }
+  .copy-btn:focus-visible { outline: 2px solid #3b6ef5; outline-offset: 2px; }
+  .copy-btn.done { color: #22a45d; border-color: #22a45d; }
+  .copy-btn.fail { color: var(--red); border-color: var(--red); }
+
+  /* 載入中、無資料、錯誤 */
+  .state-box {
+    grid-column: 1 / -1; text-align: center; padding: 40px 16px;
+    background: var(--surface); border-radius: 16px; color: var(--card-muted); font-size: 14px;
+  }
+  .state-box.error { color: var(--red); }
+  .state-box .btn { margin-top: 14px; }
+  .form-error { font-size: 13px; color: var(--red); margin-top: 16px; }
+  .form-error:empty { display: none; }
+  .btn:disabled { opacity: .6; cursor: default; }
+
+  /* ---------- 新增會議視窗 ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(17, 24, 39, .45);
+    display: grid; place-items: center; padding: 16px;
+  }
+  .modal-backdrop[hidden] { display: none; }
+  .modal {
+    width: 100%; max-width: 520px; max-height: calc(100vh - 32px); overflow: auto;
+    background: var(--surface); border-radius: 16px; padding: 26px 26px 22px;
+    box-shadow: 0 24px 60px rgba(17, 24, 39, .25);
+  }
+  .modal h2 { font-size: 20px; font-weight: 700; color: var(--card-text); margin-bottom: 20px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+  .field label { font-size: 14px; font-weight: 500; color: var(--card-text); }
+  .field label .req { color: var(--red); margin-left: 2px; }
+  .field input {
+    font: inherit; font-size: 14px; color: var(--card-text);
+    padding: 9px 12px; border: 1px solid #d6dae3; border-radius: 8px; background: var(--surface); width: 100%;
+  }
+  .field input:focus { outline: none; border-color: #3b6ef5; box-shadow: 0 0 0 3px rgba(59, 110, 245, .15); }
+  .field input[aria-invalid="true"] { border-color: var(--red); }
+  .field-hint { font-size: 12px; color: var(--card-muted); }
+  .field-error { font-size: 12px; color: var(--red); }
+  .field-error:empty { display: none; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  .btn { height: 38px; padding: 0 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+  .btn-secondary { background: var(--surface); border-color: #d6dae3; color: #374151; }
+  .btn-secondary:hover { background: #f5f7fa; }
+  .btn-primary { background: #3b6ef5; color: #fff; }
+  .btn-primary:hover { background: #2f5fe0; }
+  .btn:focus-visible, .add-btn:focus-visible { outline: 2px solid #3b6ef5; outline-offset: 2px; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1280px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 1040px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) {
+    .sidebar { display: none; }
+    .topbar { padding: 16px; }
+    .panel { padding: 24px 16px 32px; border-top-left-radius: 20px; }
+    .topbar-right { gap: 20px; }
+  }
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    .profile-text { display: none; }
+    .form-grid { grid-template-columns: 1fr; }
+    .modal { padding: 22px 18px 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ================= Sidebar ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="34" height="30" viewBox="0 0 34 30" fill="none">
+        <circle cx="12" cy="9" r="6" fill="#3b6ef5"/>
+        <circle cx="24" cy="11" r="5" fill="#8aa8ff"/>
+        <path d="M1 28c0-6.1 4.9-11 11-11s11 4.9 11 11H1z" fill="#3b6ef5"/>
+        <path d="M20 28c0-4.4 2-8.4 6-9.6 4.3 1 7 4.7 7 9.6H20z" fill="#8aa8ff"/>
+      </svg>
+      <span class="brand-name">審查會議計票</span>
+    </div>
+
+    <nav class="nav">
+      <a href="/" class="active" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="18" height="12" rx="2"/><path d="M12 15v3M8 21l4-3 4 3M7 8h6M7 11h10"/></svg>
+        會議</a>
+      <a href="#">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        設定</a>
+    </nav>
+
+    <a href="#" class="help">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg>
+      說明與支援
+    </a>
+  </aside>
+
+  <!-- ================= Main ================= -->
+  <main class="main">
+
+    <header class="topbar">
+      <div class="topbar-right">
+        <div class="profile">
+          <div class="profile-avatar">李</div>
+          <div class="profile-text">
+            <div class="profile-name">李佩珊</div>
+            <div class="profile-role">人資室</div>
+          </div>
+          <button class="chevron" aria-label="Account menu">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h1 class="panel-title">會議總覽</h1>
+        </div>
+        <button class="add-btn" id="addMeetingBtn" aria-label="新增會議" aria-haspopup="dialog">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+      </div>
+
+      <div class="toolbar">
+        <div class="filters" id="filters"></div>
+      </div>
+
+      <div class="grid" id="projects"></div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ================= 新增會議視窗 ================= -->
+<div class="modal-backdrop" id="meetingModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="meetingModalTitle">
+    <h2 id="meetingModalTitle">新增會議</h2>
+    <form id="meetingForm" novalidate>
+      <div class="form-grid">
+        <div class="field full">
+          <label for="mName">會議名稱<span class="req">*</span></label>
+          <input id="mName" type="text" maxlength="100" autocomplete="off" aria-describedby="mNameErr">
+          <span class="field-error" id="mNameErr"></span>
+        </div>
+        <div class="field">
+          <label for="mJudges">總評審人數上限<span class="req">*</span></label>
+          <input id="mJudges" type="number" min="1" step="1" inputmode="numeric" aria-describedby="mJudgesErr">
+          <span class="field-error" id="mJudgesErr"></span>
+        </div>
+        <div class="field">
+          <label for="mBudget">總預算<span class="req">*</span></label>
+          <input id="mBudget" type="number" min="0" step="1" inputmode="numeric" aria-describedby="mBudgetErr">
+          <span class="field-error" id="mBudgetErr"></span>
+        </div>
+        <div class="field full">
+          <label for="mProportion">提名通過門檻比例<span class="req">*</span></label>
+          <input id="mProportion" type="number" min="0.01" max="1" step="0.01" inputmode="decimal" aria-describedby="mProportionHint mProportionErr">
+          <span class="field-hint" id="mProportionHint">大於 0、最多到 1，預設為 0.75</span>
+          <span class="field-error" id="mProportionErr"></span>
+        </div>
+        <div class="field">
+          <label for="mKickoff">投票開始日期<span class="req">*</span></label>
+          <input id="mKickoff" type="date" aria-describedby="mKickoffErr">
+          <span class="field-error" id="mKickoffErr"></span>
+        </div>
+        <div class="field">
+          <label for="mDeadline">投票截止日期<span class="req">*</span></label>
+          <input id="mDeadline" type="date" aria-describedby="mDeadlineErr">
+          <span class="field-error" id="mDeadlineErr"></span>
+        </div>
+      </div>
+      <p class="form-error" id="mFormErr" role="alert"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="meetingCancel">取消</button>
+        <button type="submit" class="btn btn-primary" id="meetingSubmit">確定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  /* ---------- 共用：呼叫 API ----------
+     統一處理四種回應：
+     - 200：{ ok: true, data, message }
+     - 400、404：{ ok: false, kind: "rule", message }
+     - 422：{ ok: false, kind: "validation", errors }（FastAPI 預設的 detail 清單）
+     - 500 或網路錯誤：{ ok: false, kind: "server" | "network", errorId } */
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+    let json = null;
+    try { json = await res.json(); } catch { /* 回應不是 JSON */ }
+    if (res.ok) return { ok: true, data: json?.data, message: json?.message };
+    if (res.status === 422) return { ok: false, kind: "validation", status: 422, errors: json?.detail || [] };
+    if (res.status >= 500) return { ok: false, kind: "server", status: res.status, errorId: json?.data?.error_id };
+    return { ok: false, kind: "rule", status: res.status, message: json?.message || "" };
+  }
+
+  /* ---------- 共用：日期（瀏覽器所在時區，MCQ1） ---------- */
+  const pad = n => String(n).padStart(2, "0");
+  // YYYY-MM-DD → timestamp（秒）；開始為當天 00:00:00，截止為當天 23:59:59
+  function dateToTs(value, endOfDay) {
+    const [y, m, d] = value.split("-").map(Number);
+    const t = endOfDay ? new Date(y, m - 1, d, 23, 59, 59) : new Date(y, m - 1, d, 0, 0, 0);
+    return Math.floor(t.getTime() / 1000);
+  }
+  // timestamp（秒）→ YYYY/MM/DD
+  function tsToDate(ts) {
+    const t = new Date(ts * 1000);
+    return `${t.getFullYear()}/${pad(t.getMonth() + 1)}/${pad(t.getDate())}`;
+  }
+
+  /* ---------- 會議狀態（MCR2） ---------- */
+  function statusOf(m) {
+    const now = Math.floor(Date.now() / 1000);
+    if (now < m.voting_kickoff) return "upcoming";
+    if (now < m.voting_deadline) return "open";
+    return "closed";
+  }
+  const FILTERS = [
+    { key: "all", label: "所有" },
+    { key: "upcoming", label: "投票尚未開始" },
+    { key: "open", label: "投票中" },
+    { key: "closed", label: "投票已截止" },
+  ];
+
+  /* ---------- 頁面狀態 ---------- */
+  let meetings = [];          // 來自 GET /meetings，依 id 由大到小（MCQ2）
+  let activeFilter = "all";
+  let loadState = "loading";  // loading | ready | error
+
+  /* ---------- 篩選分類 ---------- */
+  const filterBox = $("filters");
+  function renderFilters() {
+    const counts = { all: meetings.length, upcoming: 0, open: 0, closed: 0 };
+    meetings.forEach(m => counts[statusOf(m)]++);
+    filterBox.innerHTML = FILTERS.map(f => `
+      <button class="filter${f.key === activeFilter ? " active" : ""}" data-filter="${f.key}" aria-pressed="${f.key === activeFilter}">
+        ${f.label}<span class="count">${loadState === "ready" ? counts[f.key] : "—"}</span>
+      </button>`).join("");
+  }
+  filterBox.addEventListener("click", e => {
+    const btn = e.target.closest("[data-filter]"); if (!btn) return;
+    activeFilter = btn.dataset.filter;   // MCQ3：實際過濾卡片
+    renderFilters(); renderCards();
+  });
+
+  /* ---------- 會議卡片 ---------- */
+  const grid = $("projects");
+  const meetingIcon = '<rect x="3" y="3" width="18" height="12" rx="2"/><path d="M12 15v3M8 21l4-3 4 3M7 8h6M7 11h10"/>';
+  const gauge = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20 20 4"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/></svg>';
+  const target = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+
+  function renderCards() {
+    if (loadState === "loading") { grid.innerHTML = `<div class="state-box">載入中…</div>`; return; }
+    if (loadState === "error") {
+      grid.innerHTML = `<div class="state-box error">無法載入會議資料<br><button type="button" class="btn btn-secondary" id="reloadBtn">重新載入</button></div>`;
+      $("reloadBtn").addEventListener("click", loadMeetings);
+      return;
+    }
+    if (!meetings.length) { grid.innerHTML = `<div class="state-box">目前沒有會議</div>`; return; }
+    const list = activeFilter === "all" ? meetings : meetings.filter(m => statusOf(m) === activeFilter);
+    if (!list.length) { grid.innerHTML = `<div class="state-box">沒有符合的會議</div>`; return; }
+    // MCQ4：點擊卡片導到會議設定頁（webServer 頁面路由為 /meeting_detail）
+    grid.innerHTML = list.map(m => {
+      const url = voteUrl(m.id);
+      return `
+      <article class="project" data-id="${m.id}">
+        <div class="project-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">${meetingIcon}</svg>
+        </div>
+        <h3><a class="card-link" href="/meeting_detail?meeting_id=${encodeURIComponent(m.id)}" aria-label="${esc(m.name)}，前往會議設定">${esc(m.name)}</a></h3>
+        <div class="meta">${target}投票日期 <b>${tsToDate(m.voting_kickoff)} ~ ${tsToDate(m.voting_deadline)}</b></div>
+        <div class="meta">${gauge}提名通過門檻比例 <b>${esc(m.proportion)}</b></div>
+        <div class="project-foot">
+          <div class="foot-label">選票網址</div>
+          <div class="foot-label right">選票進度</div>
+          <div class="vote-url">
+            <button type="button" class="copy-btn" data-copy="${esc(url)}" title="${esc(url)}" aria-label="複製 ${esc(m.name)} 的選票網址">複製</button>
+          </div>
+          <div class="progress">${Math.round(m.vote_progress * 100)}%</div>
+        </div>
+      </article>`;
+    }).join("");
+  }
+
+  /* ---------- 選票網址與複製 ---------- */
+  // 評委投票頁的完整網址（VPQ7）
+  const voteUrl = id => `${location.origin}/vote?meeting_id=${encodeURIComponent(id)}`;
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // 不支援 Clipboard API 或非安全連線（例如以 IP 開啟的 http）時，改用暫時的文字框複製
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
+      ta.remove();
+      return ok;
+    }
+  }
+  const copyTimers = new WeakMap();
+  grid.addEventListener("click", async e => {
+    const btn = e.target.closest(".copy-btn"); if (!btn) return;
+    e.preventDefault(); e.stopPropagation();
+    const ok = await copyText(btn.dataset.copy);
+    btn.textContent = ok ? "已複製" : "複製失敗";
+    btn.classList.toggle("done", ok); btn.classList.toggle("fail", !ok);
+    clearTimeout(copyTimers.get(btn));
+    copyTimers.set(btn, setTimeout(() => { btn.textContent = "複製"; btn.classList.remove("done", "fail"); }, 2000));
+  });
+
+  /* ---------- 載入會議：GET /meetings ---------- */
+  async function loadMeetings() {
+    loadState = "loading"; renderFilters(); renderCards();
+    const r = await api("GET", "/meetings");
+    if (r.ok) {
+      meetings = [...(r.data || [])].sort((a, b) => b.id - a.id);
+      loadState = "ready";
+    } else {
+      loadState = "error";
+    }
+    renderFilters(); renderCards();
+  }
+
+  /* ---------- 新增會議視窗 ---------- */
+  const modal = $("meetingModal"), form = $("meetingForm"), addBtn = $("addMeetingBtn"), submitBtn = $("meetingSubmit");
+  const fields = ["mName", "mJudges", "mBudget", "mProportion", "mKickoff", "mDeadline"];
+  // 後端欄位 → 視窗欄位（422 對應用）
+  const FIELD_OF = {
+    name: "mName", total_judges: "mJudges", total_budget: "mBudget",
+    proportion: "mProportion", voting_kickoff: "mKickoff", voting_deadline: "mDeadline",
+  };
+  let submitting = false;
+
+  const setError = (id, msg) => {
+    $(id + "Err").textContent = msg;
+    if (msg) $(id).setAttribute("aria-invalid", "true"); else $(id).removeAttribute("aria-invalid");
+  };
+  const clearErrors = () => { fields.forEach(id => setError(id, "")); $("mFormErr").textContent = ""; };
+  const labelOf = id => document.querySelector(`label[for="${id}"]`).firstChild.textContent.trim();
+
+  function openModal() {
+    form.reset();
+    $("mProportion").value = "0.75";   // 預設門檻比例
+    clearErrors();
+    modal.hidden = false;
+    document.body.style.overflow = "hidden";
+    $("mName").focus();
+  }
+  function closeModal() {
+    modal.hidden = true;
+    document.body.style.overflow = "";
+    addBtn.focus();
+  }
+
+  // 前端欄位檢查，規則與後端 meeting API 相同
+  function validate() {
+    clearErrors();
+    const name = $("mName").value.trim();
+    const judges = Number($("mJudges").value);
+    const budget = Number($("mBudget").value);
+    const proportion = Number($("mProportion").value);
+    const kickoff = $("mKickoff").value, deadline = $("mDeadline").value;
+    const errors = {};
+    if (!name) errors.mName = "請輸入會議名稱";
+    if ($("mJudges").value === "") errors.mJudges = "請輸入總評審人數上限";
+    else if (!Number.isInteger(judges) || judges < 1) errors.mJudges = "須為 1 以上的整數";
+    if ($("mBudget").value === "") errors.mBudget = "請輸入總預算";
+    else if (!Number.isInteger(budget) || budget < 0) errors.mBudget = "須為 0 以上的整數";
+    if ($("mProportion").value === "") errors.mProportion = "請輸入提名通過門檻比例";
+    else if (!(proportion > 0 && proportion <= 1)) errors.mProportion = "須大於 0，且最多為 1";
+    if (!kickoff) errors.mKickoff = "請選擇投票開始日期";
+    if (!deadline) errors.mDeadline = "請選擇投票截止日期";
+    else if (kickoff && deadline < kickoff) errors.mDeadline = "截止日期不可早於開始日期";
+    Object.entries(errors).forEach(([id, msg]) => setError(id, msg));
+    const first = fields.find(id => errors[id]);
+    if (first) { $(first).focus(); return null; }
+    return { name, judges, budget, proportion, kickoff, deadline };
+  }
+
+  // 422 的錯誤類型轉為中文
+  function validationMessage(err, id) {
+    const c = err.ctx || {};
+    switch (err.type) {
+      case "missing": case "string_too_short": return (id === "mKickoff" || id === "mDeadline" ? "請選擇" : "請輸入") + labelOf(id);
+      case "greater_than_equal": return `須大於或等於 ${c.ge}`;
+      case "greater_than": return `須大於 ${c.gt}`;
+      case "less_than_equal": return `須小於或等於 ${c.le}`;
+      case "less_than": return `須小於 ${c.lt}`;
+      case "int_parsing": case "int_type": case "int_from_float": return "須為整數";
+      case "float_parsing": case "float_type": return "須為數字";
+      default: return "格式不正確";
+    }
+  }
+  // 400 的英文訊息轉為中文；未知訊息原樣顯示
+  const RULE_MESSAGES = {
+    "voting_kickoff must be earlier than voting_deadline": "投票截止時間須晚於開始時間",
+  };
+
+  function showSubmitError(r) {
+    if (r.kind === "validation") {
+      let first = null, unmapped = [];
+      for (const err of r.errors) {
+        const id = FIELD_OF[err.loc?.[1]];
+        if (id) { setError(id, validationMessage(err, id)); first = first || id; }
+        else unmapped.push(err.msg);
+      }
+      if (unmapped.length) $("mFormErr").textContent = "資料格式不正確，請檢查後再試。";
+      if (first) $(first).focus();
+    } else if (r.kind === "rule") {
+      $("mFormErr").textContent = "無法新增會議：" + (RULE_MESSAGES[r.message] || r.message || "請檢查輸入內容");
+    } else if (r.kind === "server") {
+      $("mFormErr").textContent = `新增失敗，請稍後再試${r.errorId ? `（錯誤代碼：${r.errorId}）` : ""}`;
+    } else {
+      $("mFormErr").textContent = "無法連線到伺服器，請確認網路後再試。";
+    }
+  }
+
+  addBtn.addEventListener("click", openModal);
+  $("meetingCancel").addEventListener("click", () => { if (!submitting) closeModal(); });
+
+  // 新增會議：POST /meetings
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    if (submitting) return;                 // 避免重複送出
+    const data = validate(); if (!data) return;
+    submitting = true;
+    submitBtn.disabled = true; submitBtn.textContent = "儲存中…";
+    const r = await api("POST", "/meetings", {
+      name: data.name,
+      total_judges: data.judges,
+      total_budget: data.budget,
+      proportion: data.proportion,
+      voting_kickoff: dateToTs(data.kickoff, false),
+      voting_deadline: dateToTs(data.deadline, true),
+    });
+    submitting = false;
+    submitBtn.disabled = false; submitBtn.textContent = "確定";
+    if (!r.ok) { showSubmitError(r); return; }
+    closeModal();
+    activeFilter = "all";                   // 新會議顯示在「所有」的最前面
+    await loadMeetings();                   // MCQ5：重新取得列表
+  });
+
+  // Esc 關閉；Tab 只在視窗內循環
+  modal.addEventListener("keydown", e => {
+    if (e.key === "Escape") { e.preventDefault(); if (!submitting) closeModal(); return; }
+    if (e.key !== "Tab") return;
+    const focusable = [...modal.querySelectorAll("input, button:not([disabled])")];
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  loadMeetings();
+})();
+</script>
+</body>
+</html>

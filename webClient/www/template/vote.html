@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>評審投票</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* 與其他頁面一致的藍色系 */
+  :root {
+    --bg: #f5f7fb;
+    --surface: #ffffff;
+    --sunk: #eef1f7;
+    --line: #e4e7ed;
+    --text: #1a1f36;
+    --muted: #6b7280;
+    --primary: #3b6ef5;
+    --primary-hover: #2f5fe0;
+    --primary-soft: #eaf0ff;
+    --fail: #e5484d;
+    --fail-soft: #fdecec;
+    --r: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+    background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+  button, select { font: inherit; }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 16px 60px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* ---------- 頁首 ---------- */
+  .eyebrow { font-size: 14px; letter-spacing: .12em; color: var(--muted); }
+  h1 { font-size: 40px; font-weight: 700; line-height: 1.2; margin-top: 6px; }
+
+  /* ---------- 卡片 ---------- */
+  .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 22px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .note { font-size: 14px; color: var(--muted); }
+
+  /* 評委選單 */
+  .judge-label { font-size: 17px; font-weight: 500; }
+  select {
+    font-size: 16px; color: var(--text); background: var(--surface);
+    border: 1px solid #d6dae3; border-radius: 9px; padding: 10px 14px; min-width: 220px; cursor: pointer;
+  }
+  select:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  /* 獎項 */
+  .award-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .award-head h2 { font-size: 20px; font-weight: 700; }
+  .pill { font-size: 13px; font-weight: 600; padding: 3px 12px; border-radius: 99px; white-space: nowrap; }
+  .pill.open { background: var(--primary-soft); color: var(--primary); }
+  .pill.done { background: var(--primary); color: #fff; }
+  .pill.closed { background: var(--sunk); color: var(--muted); }
+
+  .noms { margin-top: 14px; }
+
+  /* 表格：提名名單與通過案件排序 */
+  .table-wrap { overflow-x: auto; max-width: 100%; }
+  .vtable { width: 100%; border-collapse: collapse; font-size: 15px; }
+  .vtable th { text-align: left; font-size: 13px; font-weight: 500; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .vtable td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; line-height: 1.6; }
+  .vtable tbody tr:last-child td { border-bottom: none; }
+  .vtable .person { white-space: nowrap; width: 90px; }
+  .vtable .title { min-width: 240px; font-weight: 600; overflow-wrap: anywhere; }
+  .vtable .act { text-align: right; white-space: nowrap; width: 1%; }
+  .vtable .no { text-align: center; width: 56px; color: var(--primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .vtable td.act .icon-btn + .icon-btn { margin-left: 6px; }
+
+  .seg { display: inline-flex; border: 1px solid #d6dae3; border-radius: 9px; overflow: hidden; flex-shrink: 0; }
+  .seg button { border: none; background: var(--surface); color: var(--muted); padding: 8px 16px; min-width: 82px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid #d6dae3; }
+  .seg button.on-pass { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
+  .seg button.on-fail { background: var(--fail-soft); color: var(--fail); font-weight: 700; }
+  .seg button:disabled { cursor: default; }
+  .seg button:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+  /* 排序 */
+  .rank { background: var(--sunk); border-radius: 10px; padding: 14px; margin-top: 16px; }
+  .rank h3 { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: .04em; margin-bottom: 10px; }
+  .rank .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
+  .rtable .title { font-weight: 500; }
+  .icon-btn { width: 34px; height: 32px; border: 1px solid #d6dae3; border-radius: 7px; background: var(--surface); color: var(--text); cursor: pointer; }
+  .icon-btn:disabled { opacity: .35; cursor: default; }
+  .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  .actions { margin-top: 18px; }
+  .btn { border: none; border-radius: 9px; padding: 11px 22px; font-weight: 700; cursor: pointer; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: var(--primary-hover); }
+  .btn-primary:disabled { opacity: .45; cursor: default; }
+  .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+  .empty { text-align: center; color: var(--muted); padding: 28px 12px; }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: var(--text); color: #fff; padding: 9px 18px; border-radius: 9px; font-size: 14px; z-index: 20;
+  }
+
+  /* ---------- 送出選票後的確認畫面 ---------- */
+  .view { display: flex; flex-direction: column; gap: 20px; }
+  .view[hidden] { display: none; }
+  .done-card {
+    background: var(--surface); border: 1px solid var(--line); border-top: 10px solid var(--primary);
+    border-radius: var(--r); padding: 26px 28px 28px; margin-top: 12px;
+  }
+  .done-card[hidden] { display: none; }
+  .done-card h2 { font-size: 30px; font-weight: 500; margin-bottom: 14px; }
+  .done-card h2:focus { outline: none; }
+  .done-card p { font-size: 15px; color: var(--text); }
+  .done-link { display: inline-block; margin-top: 22px; font-size: 15px; color: var(--primary); text-decoration: underline; }
+  .done-link:hover { color: var(--primary-hover); }
+  .done-link:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 2px; }
+  .done-link[hidden] { display: none; }
+  .done-card .done-note { margin-top: 22px; color: var(--muted); }
+
+  /* ---------- 串接 API：狀態、錯誤與確認視窗 ---------- */
+  .empty.error { color: var(--fail); }
+  .empty .btn { margin-top: 14px; }
+  .phase-note { margin-top: 14px; font-size: 14px; color: #b45309; background: #fff7e6; border-radius: 8px; padding: 8px 12px; }
+  .phase-note[hidden] { display: none; }
+  .phase-note.closed { color: var(--muted); background: var(--sunk); }
+  .form-error { font-size: 14px; color: var(--fail); margin-top: 12px; white-space: pre-line; }
+  .form-error:empty { display: none; }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid #d6dae3; }
+  .btn-secondary:hover { background: #f5f7fa; }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(26, 31, 54, .45); display: grid; place-items: center; padding: 16px; z-index: 30; }
+  .modal-backdrop[hidden] { display: none; }
+  .modal { background: var(--surface); border-radius: var(--r); padding: 24px; width: 100%; max-width: 420px; box-shadow: 0 20px 50px rgba(30, 40, 60, .2); }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .modal p { font-size: 15px; color: var(--muted); }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+  @media (max-width: 560px) {
+    h1 { font-size: 32px; }
+    select { min-width: 0; width: 100%; }
+    .judge-label { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- 投票畫面 -->
+  <div id="voteView" class="view">
+    <header>
+      <div class="eyebrow">審查會議計票</div>
+      <h1 id="title"></h1>
+    </header>
+
+    <!-- 找不到會議或載入失敗時，只顯示這個區塊（VPR1） -->
+    <section id="pageState" class="sheet empty" hidden></section>
+
+    <div id="pageBody" class="view">
+      <section class="sheet">
+        <div class="row">
+          <label for="judgeSel" class="judge-label">選擇投票評委</label>
+          <select id="judgeSel" disabled><option value="">載入中…</option></select>
+        </div>
+        <p class="phase-note" id="phaseNote" role="status" hidden></p>
+      </section>
+
+      <main id="awards" style="display:flex;flex-direction:column;gap:20px"></main>
+
+      <!-- 唯一的送出按鈕：一次送出所有尚未送出的獎項（VP14） -->
+      <section class="sheet" id="submitBar" hidden>
+        <div class="row"><span class="note" id="submitHint"></span><span class="spacer"></span>
+          <button type="button" class="btn btn-primary" id="submitAll" disabled>送出選票</button>
+        </div>
+        <p class="form-error" id="submitErr" role="alert"></p>
+      </section>
+    </div>
+  </div>
+
+  <!-- 送出選票後的確認畫面 -->
+  <section id="doneView" class="done-card" hidden aria-labelledby="doneTitle">
+    <h2 id="doneTitle"></h2>
+    <p>我們已經收到您的選票。</p>
+    <a href="#" id="voteAgain" class="done-link">提交其他選票</a>
+    <p id="allDone" class="done-note" hidden>所有評委皆已送出選票。</p>
+  </section>
+</div>
+
+<!-- 送出前確認（VPR17） -->
+<div class="modal-backdrop" id="confirmModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+    <h2 id="confirmTitle">確認送出選票</h2>
+    <p id="confirmText">送出後無法修改，確定送出？</p>
+    <p class="note" id="confirmScope"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" id="confirmCancel">取消</button>
+      <button type="button" class="btn btn-primary" id="confirmOk">確定送出</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pad = n => String(n).padStart(2, "0");
+  // timestamp（秒）→ YYYY-MM-DD HH:mm（瀏覽器所在時區）
+  const stamp = ts => { const t = new Date(ts * 1000); return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ${pad(t.getHours())}:${pad(t.getMinutes())}`; };
+
+  /* ---------- 共用：呼叫 API（與 meeting_detail.html 相同，VPR14） ----------
+     - 200：{ ok: true, data }
+     - 400、404：{ ok: false, kind: "rule", status, message, data }
+     - 422：{ ok: false, kind: "validation", errors }
+     - 500 或網路錯誤：{ ok: false, kind: "server" | "network", errorId } */
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch(path, {
+        method,
+        headers: body ? { "Content-Type": "application/json" } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+    let json = null;
+    try { json = await res.json(); } catch { /* 回應不是 JSON */ }
+    if (res.ok) return { ok: true, data: json?.data };
+    if (res.status === 422) return { ok: false, kind: "validation", status: 422, errors: json?.detail || [] };
+    if (res.status >= 500) return { ok: false, kind: "server", status: res.status, errorId: json?.data?.error_id };
+    return { ok: false, kind: "rule", status: res.status, message: json?.message || "", data: json?.data };
+  }
+
+  // 送出選票的錯誤訊息（VP4）。後端訊息中含有 id，以開頭文字判斷
+  function ballotError(r) {
+    if (r.kind === "network") return "無法連線到伺服器，請確認網路後再試。";
+    if (r.kind === "server") return `送出失敗，請稍後再試${r.errorId ? `（錯誤代碼：${r.errorId}）` : ""}`;
+    if (r.kind === "validation") return "選票格式不正確，請重新載入";
+    if (r.status === 404) return "評委或獎項已不存在，請重新載入";
+    const m = r.message || "";
+    if (m === "Voting has not started yet") return "投票尚未開始";
+    if (m === "Voting has ended") return "投票已截止";
+    if (m.startsWith("Judge ") && m.includes("already submitted")) return "部分獎項已送出過選票，請重新確認";
+    if (m.startsWith("The ballot must include every nomination")) return "提名名單已變更，請重新載入";
+    if (m.startsWith("Nominations that") || m.startsWith("Sort values")) return "排序有誤，請重新確認排序";
+    if (m.startsWith("Judge and prize belong to different meetings")) return "評委或獎項已不存在，請重新載入";
+    if (m.startsWith("Prize ") && m.includes("has no nominations")) return "此獎項尚無提名";
+    if (m.startsWith("The batch must include every votable prize")) return "獎項已變更，請重新載入";
+    if (m.startsWith("Duplicate prize_id")) return "選票格式不正確，請重新載入";
+    return m || "送出失敗，請稍後再試";
+  }
+
+  /* ---------- 會議 id（VPR1） ---------- */
+  const rawId = new URLSearchParams(location.search).get("meeting_id");
+  const meetingId = /^[1-9]\d*$/.test(rawId || "") ? Number(rawId) : null;
+
+  /* ---------- 狀態：全部以後端為準，不使用本機儲存（VPR3） ---------- */
+  let meeting = null;
+  let judges = [];          // 依 id 排序
+  let prizes = [];          // 依 id 排序，每個含 nominations（依 id 排序）
+  let progress = {};        // prize_id → { judge_id: voted_at 或 null }
+  let judgeId = null;       // 目前選擇的評委
+  let forcedClosed = false; // 送出時後端回覆已截止
+  let drafts = {};          // 尚未送出的勾選，只存在畫面上（VPQ4）
+  let errors = {};          // prize_id → 送出時該獎項的錯誤訊息
+  let submitError = "";     // 送出時的整體錯誤訊息
+  let submitting = false;   // 送出中
+
+  const phase = () => {
+    if (forcedClosed) return "closed";
+    const now = Math.floor(Date.now() / 1000);
+    return now < meeting.voting_kickoff ? "draft" : now < meeting.voting_deadline ? "open" : "closed";
+  };
+  // 可投票獎項：底下至少有一筆提名（MP5）
+  const votable = () => prizes.filter(p => p.nominations.length > 0);
+  const submittedAt = (pid, jid) => progress[pid]?.[jid] ?? null;
+  const hasSubmitted = jid => { const list = votable(); return list.length > 0 && list.every(p => submittedAt(p.id, jid)); };
+  const pendingJudges = () => judges.filter(j => !hasSubmitted(j.id));
+  // 這次要送出的獎項：此評委尚未送出的可投票獎項
+  const toSubmit = () => votable().filter(p => !submittedAt(p.id, judgeId));
+  const isReady = p => p.nominations.every(n => draftFor(p).decisions[n.id]);
+  const judgeName = jid => judges.find(j => j.id === jid)?.name || "";
+
+  function draftFor(p) {
+    if (!drafts[p.id]) drafts[p.id] = { decisions: {}, ranking: [] };
+    const d = drafts[p.id], ids = new Set(p.nominations.map(n => n.id));
+    // 排序只保留通過的提名；新通過的加在最後
+    d.ranking = d.ranking.filter(id => ids.has(id) && d.decisions[id] === "pass");
+    for (const n of p.nominations) if (d.decisions[n.id] === "pass" && !d.ranking.includes(n.id)) d.ranking.push(n.id);
+    return d;
+  }
+
+  /* ---------- 讀取（VP5） ---------- */
+  function showPageState(html, isError) {
+    $("pageBody").hidden = true;
+    $("pageState").hidden = false;
+    $("pageState").className = "sheet empty" + (isError ? " error" : "");
+    $("pageState").innerHTML = html;
+  }
+  function showLoadError() {
+    showPageState(`無法載入投票資料<br><button type="button" class="btn btn-secondary" id="pageReload">重新載入</button>`, true);
+    $("pageReload").addEventListener("click", () => { $("pageState").hidden = true; $("pageBody").hidden = false; init(); });
+  }
+
+  async function loadProgress() {
+    const res = await Promise.all(prizes.map(p => api("GET", `/prizes/${p.id}/progress`)));
+    if (res.some(r => !r.ok)) return false;
+    progress = {};
+    prizes.forEach((p, i) => {
+      progress[p.id] = Object.fromEntries(res[i].data.judges.map(j => [j.judge_id, j.voted ? j.voted_at : null]));
+    });
+    return true;
+  }
+
+  async function init() {
+    if (meetingId === null) { $("title").textContent = "找不到此會議"; showPageState("找不到此會議", true); return; }
+    $("title").textContent = "載入中…";
+    const [m, js, ps] = await Promise.all([
+      api("GET", `/meetings/${meetingId}`),
+      api("GET", `/judges?meeting_id=${meetingId}`),
+      api("GET", `/prizes?meeting_id=${meetingId}`),
+    ]);
+    if (!m.ok && m.status === 404) { $("title").textContent = "找不到此會議"; showPageState("找不到此會議", true); return; }
+    if (!m.ok || !js.ok || !ps.ok) { $("title").textContent = "審查會議"; showLoadError(); return; }
+    meeting = m.data;
+    $("title").textContent = meeting.name;
+    $("doneTitle").textContent = meeting.name;
+    document.title = `評審投票｜${meeting.name}`;
+    judges = [...(js.data || [])].sort((a, b) => a.id - b.id);
+    const list = [...(ps.data || [])].sort((a, b) => a.id - b.id);
+
+    // 每個獎項同時查詢提名名單；全部到齊後才顯示（VP5）
+    const noms = await Promise.all(list.map(p => api("GET", `/nominations?prize_id=${p.id}`)));
+    if (noms.some(n => !n.ok)) { showLoadError(); return; }
+    // 只保留畫面需要的欄位，不使用計分欄位（VPQ8）
+    prizes = list.map((p, i) => ({
+      id: p.id, name: p.name,
+      nominations: [...(noms[i].data || [])].sort((a, b) => a.id - b.id)
+        .map(n => ({ id: n.id, manager_name: n.manager_name, name: n.name, employee_name: n.employee_name })),
+    }));
+    if (!(await loadProgress())) { showLoadError(); return; }
+    render();
+  }
+
+  /* ---------- 畫面 ---------- */
+  function renderJudges() {
+    const list = pendingJudges(), sel = $("judgeSel");
+    if (!list.some(j => j.id === judgeId)) judgeId = null;   // 已送出或不存在的評委不能被選取
+    sel.disabled = list.length === 0;
+    sel.innerHTML = !judges.length
+      ? `<option value="">此會議尚未設定評委</option>`
+      : list.length
+        ? `<option value="" ${judgeId ? "" : "selected"}>請選擇評委</option>` +
+          list.map(j => `<option value="${j.id}" ${judgeId === j.id ? "selected" : ""}>${esc(j.name)}</option>`).join("")
+        : `<option value="">所有評委皆已送出選票</option>`;
+  }
+
+  function renderPhase() {
+    const ph = phase(), note = $("phaseNote");
+    note.hidden = ph === "open";
+    note.className = "phase-note" + (ph === "closed" ? " closed" : "");
+    note.textContent = ph === "draft" ? "投票尚未開始，開始後請重新整理頁面" : ph === "closed" ? "投票已截止" : "";
+  }
+
+  function awardHTML(p) {
+    const ph = phase(), at = submittedAt(p.id, judgeId);
+    const locked = ph !== "open" || !!at || submitting;
+    // 已送出時只顯示「已送出」與時間，不顯示當時的表決（VPQ3）
+    const d = at ? { decisions: {}, ranking: [] } : draftFor(p);
+    const decided = p.nominations.filter(n => d.decisions[n.id]).length;
+    const ready = p.nominations.length > 0 && decided === p.nominations.length;
+    const status = at ? `<span class="pill done">已送出 ${esc(stamp(at))}</span>`
+      : ph === "draft" ? `<span class="pill closed">未開放</span>`
+      : ph === "closed" ? `<span class="pill closed">已截止</span>`
+      : `<span class="pill open">投票中</span>`;
+    const nomOf = id => p.nominations.find(n => n.id === id);
+    const fullName = n => `${n.manager_name} ${n.name} ${n.employee_name}`;   // 給螢幕閱讀器用的完整名稱
+    const dis = locked ? "disabled" : "";
+
+    // 提名名單：上司｜提名名稱｜下屬｜表決
+    const rows = p.nominations.map(n => {
+      const v = d.decisions[n.id];
+      return `<tr>
+        <td class="person">${esc(n.manager_name)}</td>
+        <td class="title">${esc(n.name)}</td>
+        <td class="person">${esc(n.employee_name)}</td>
+        <td class="act">
+          <span class="seg" role="group" aria-label="${esc(fullName(n))}">
+            <button data-act="decide" data-p="${p.id}" data-n="${n.id}" data-v="pass" class="${v === "pass" ? "on-pass" : ""}" aria-pressed="${v === "pass"}" ${dis}>通過</button>
+            <button data-act="decide" data-p="${p.id}" data-n="${n.id}" data-v="fail" class="${v === "fail" ? "on-fail" : ""}" aria-pressed="${v === "fail"}" ${dis}>不通過</button>
+          </span>
+        </td>
+      </tr>`;
+    }).join("");
+    const nomTable = p.nominations.length ? `
+      <div class="table-wrap"><table class="vtable">
+        <thead><tr><th>上司</th><th>提名名稱</th><th>下屬</th><th class="act">表決</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>` : `<div class="note">此獎項尚無提名。</div>`;
+
+    // 通過案件排序：名次｜上司｜提名名稱｜下屬｜調整
+    const rank = d.ranking.length > 1 ? `
+      <div class="rank"><h3>通過案件排序（第 1 名最優）</h3>
+        <div class="table-wrap"><table class="vtable rtable">
+          <thead><tr><th class="no">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th class="act">調整</th></tr></thead>
+          <tbody>${d.ranking.map((id, i) => { const n = nomOf(id); return `
+            <tr>
+              <td class="no">${i + 1}</td>
+              <td class="person">${esc(n.manager_name)}</td>
+              <td class="title">${esc(n.name)}</td>
+              <td class="person">${esc(n.employee_name)}</td>
+              <td class="act">
+                <button class="icon-btn" data-act="up" data-p="${p.id}" data-i="${i}" aria-label="上移 ${esc(fullName(n))}" ${i === 0 || locked ? "disabled" : ""}>↑</button>
+                <button class="icon-btn" data-act="down" data-p="${p.id}" data-i="${i}" aria-label="下移 ${esc(fullName(n))}" ${i === d.ranking.length - 1 || locked ? "disabled" : ""}>↓</button>
+              </td>
+            </tr>`; }).join("")}
+          </tbody>
+        </table></div>
+      </div>` : "";
+
+    // 各獎項不再有送出按鈕，改為頁面下方唯一的送出按鈕（VP14）；這裡只顯示該獎項是否已表決完成
+    const actions = at || ph !== "open" || !p.nominations.length ? ""
+      : `<div class="row actions"><span class="note">${ready ? "此獎項已表決完成。" : "每一件提名都需表決。"}</span></div>`;
+
+    return `<section class="sheet" data-prize="${p.id}">
+      <div class="award-head">
+        <div><h2>${esc(p.name)}</h2><span class="note">共 ${p.nominations.length} 件提名${at ? "" : ` · 已表決 ${decided} 件`}</span></div>
+        ${status}
+      </div>
+      <div class="noms">${nomTable}</div>
+      ${rank}${actions}
+      <p class="form-error" role="alert">${esc(errors[p.id] || "")}</p>
+    </section>`;
+  }
+
+  function render() {
+    renderJudges();
+    renderPhase();
+    let html;
+    if (!judges.length) html = `<section class="sheet empty">此會議尚未設定評委</section>`;                    // VPR15
+    else if (!votable().length) html = `<section class="sheet empty">此會議尚無可投票的獎項</section>`;          // VPR16
+    else if (!pendingJudges().length) html = `<section class="sheet empty">所有評委皆已送出選票，感謝您的參與。</section>`;
+    else if (!judgeId) html = `<section class="sheet empty">請先選擇投票評委。</section>`;
+    else html = prizes.map(awardHTML).join("");
+    $("awards").innerHTML = html;
+    renderSubmitBar(html.includes("data-prize"));
+  }
+
+  function renderSubmitBar(showingAwards) {
+    const list = showingAwards && phase() === "open" ? toSubmit() : [];
+    $("submitBar").hidden = !list.length;
+    if (!list.length) return;
+    const notReady = list.filter(p => !isReady(p));
+    $("submitHint").textContent = notReady.length
+      ? `每個獎項的每一件提名都需表決後才能送出（尚有 ${notReady.length} 個獎項未完成）。`
+      : "請確認各獎項的表決與排序後送出。";
+    $("submitAll").disabled = submitting || notReady.length > 0;
+    $("submitAll").textContent = submitting ? "送出中…" : "送出選票";
+    $("submitErr").textContent = submitError;
+  }
+
+  /* ---------- 操作 ---------- */
+  $("judgeSel").addEventListener("change", e => {
+    judgeId = e.target.value ? Number(e.target.value) : null;
+    drafts = {}; errors = {}; submitError = "";   // 換評委時，上一位未送出的勾選不保留（VPR11）
+    render();
+  });
+
+  $("awards").addEventListener("click", e => {
+    const t = e.target.closest("[data-act]"); if (!t || t.disabled) return;
+    const p = prizes.find(x => x.id === Number(t.dataset.p));
+    if (!p || phase() !== "open" || submittedAt(p.id, judgeId) || submitting) return;
+    const d = draftFor(p);
+    if (t.dataset.act === "decide") {
+      const n = Number(t.dataset.n), v = t.dataset.v;
+      if (d.decisions[n] === v) delete d.decisions[n]; else d.decisions[n] = v;   // 再按一次取消
+      delete errors[p.id]; submitError = "";
+    } else if (t.dataset.act === "up" || t.dataset.act === "down") {
+      const i = +t.dataset.i, j = t.dataset.act === "up" ? i - 1 : i + 1;
+      [d.ranking[i], d.ranking[j]] = [d.ranking[j], d.ranking[i]];
+    }
+    render();
+  });
+
+  /* ---------- 送出前確認（VPR17） ---------- */
+  let confirmOpener = null;
+  function openConfirm() {
+    $("confirmScope").textContent = `將一次送出 ${toSubmit().length} 個獎項的選票。`;
+    confirmOpener = document.activeElement;
+    $("confirmModal").hidden = false;
+    $("confirmOk").focus();
+  }
+  function closeConfirm() {
+    $("confirmModal").hidden = true;
+    confirmOpener?.focus?.();
+  }
+  $("confirmCancel").addEventListener("click", closeConfirm);
+  $("submitAll").addEventListener("click", () => {
+    if (submitting || $("submitAll").disabled) return;
+    openConfirm();
+  });
+  $("confirmOk").addEventListener("click", () => {
+    if ($("confirmModal").hidden) return;
+    $("confirmModal").hidden = true;
+    submitAll();
+  });
+  $("confirmModal").addEventListener("keydown", e => {
+    if (e.key === "Escape") { e.preventDefault(); closeConfirm(); return; }
+    if (e.key !== "Tab") return;
+    const first = $("confirmCancel"), last = $("confirmOk");   // Tab 只在視窗內循環
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  /* ---------- 送出選票：POST /votes/batch，全部成功或全部失敗（VP14） ---------- */
+  const entriesOf = p => {
+    const d = draftFor(p);
+    return p.nominations.map(n => d.decisions[n.id] === "pass"
+      ? { nominate_id: n.id, pass: 1, sort: d.ranking.indexOf(n.id) + 1 }
+      : { nominate_id: n.id, pass: 0 });
+  };
+
+  async function submitAll() {
+    if (submitting) return;   // VPR12
+    const jid = judgeId, list = toSubmit();
+    if (!list.length || !list.every(isReady)) return;
+    const ballots = list.map(p => ({ prize_id: p.id, entries: entriesOf(p) }));
+
+    submitting = true; errors = {}; submitError = ""; render();
+    const r = await api("POST", "/votes/batch", { judge_id: jid, ballots });
+    submitting = false;
+
+    if (!r.ok) {
+      // 失敗時沒有任何選票寫入，保留所有勾選與排序
+      const msg = ballotError(r);
+      const nameOf = pid => prizes.find(p => p.id === pid)?.name || "";
+      const marked = [r.data?.prize_id, ...(r.data?.prize_ids || [])].filter(pid => prizes.some(p => p.id === pid));
+      marked.forEach(pid => { errors[pid] = msg; });
+      submitError = marked.length ? marked.map(pid => `「${nameOf(pid)}」：${msg}`).join("\n") : msg;
+      if (r.message === "Voting has ended") forcedClosed = true;
+      // 已在其他裝置送出：重新取得進度
+      if (msg === "部分獎項已送出過選票，請重新確認") {
+        await loadProgress();
+        if (hasSubmitted(jid)) { judgeId = null; drafts = {}; errors = {}; submitError = ""; render(); showDone(); return; }
+      }
+      render();
+      return;
+    }
+
+    // 成功：先以回應更新，再重新取得各獎項進度（VPR9）
+    for (const b of r.data?.ballots || []) {
+      progress[b.prize_id] = { ...(progress[b.prize_id] || {}), [jid]: b.votes?.[0]?.created_at ?? Math.floor(Date.now() / 1000) };
+    }
+    await loadProgress();
+    // 所有可投票獎項都已送出：該評委從選單中移除，並顯示確認畫面
+    judgeId = null; drafts = {}; errors = {}; submitError = "";
+    render(); showDone();
+  }
+
+  /* ---------- 確認畫面 ---------- */
+  function showDone() {
+    const remaining = pendingJudges().length > 0;
+    $("voteAgain").hidden = !remaining;      // 還有評委未投票時，才顯示「提交其他選票」（VPR10）
+    $("allDone").hidden = remaining;
+    $("voteView").hidden = true;
+    $("doneView").hidden = false;
+    window.scrollTo?.(0, 0);
+    $("doneTitle").setAttribute("tabindex", "-1");
+    $("doneTitle").focus();
+  }
+  $("voteAgain").addEventListener("click", async e => {
+    e.preventDefault();
+    await loadProgress();      // 其他裝置可能已送出
+    $("doneView").hidden = true;
+    $("voteView").hidden = false;
+    render();
+    $("judgeSel").focus();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
