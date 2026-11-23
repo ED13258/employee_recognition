@@ -358,7 +358,7 @@
           <textarea id="newAwardList" rows="7" spellcheck="false"
             placeholder="高瑞宏 推動溫室氣體盤查查證機構通過 TAF 認可與相關業務開發 李品辰"
             aria-describedby="newAwardListHint newAwardListErr"></textarea>
-          <span class="field-hint" id="newAwardListHint">格式：上司 提名名稱 下屬，中間以空白隔開。第一段為上司、最後一段為下屬，中間全部視為提名名稱。</span>
+          <span class="field-hint" id="newAwardListHint">格式：推薦人 成果名稱 代表人，中間以空白隔開。第一段為推薦人、最後一段為代表人，中間全部視為成果名稱。</span>
           <span class="field-error" id="newAwardListErr"></span>
         </div>
       </div>
@@ -631,7 +631,7 @@
           <div class="nominee-title">提名名單</div>
           <div class="table-wrap">
             ${p.nominations.length ? `<table class="nominee-table">
-              <thead><tr><th scope="col">上司</th><th scope="col">提名名稱</th><th scope="col">下屬</th></tr></thead>
+              <thead><tr><th scope="col">推薦人</th><th scope="col">成果名稱</th><th scope="col">代表人</th></tr></thead>
               <tbody>${p.nominations.map(n => `<tr><td>${esc(n.manager_name)}</td><td>${esc(n.name)}</td><td>${esc(n.employee_name)}</td></tr>`).join("")}</tbody>
             </table>` : `<div class="nominee-empty">尚無提名</div>`}
           </div>
@@ -698,7 +698,7 @@
   }
 
   // 解析提名名單：每行一件，以空白（含全形空白、Tab）分段。
-  // 第一段為上司、最後一段為下屬，中間全部為提名名稱。保留原始行號，用來顯示後端錯誤
+  // 第一段為推薦人、最後一段為代表人，中間全部為成果名稱。保留原始行號，用來顯示後端錯誤
   function parseNominees(text) {
     const nominees = [], lineNos = [], badLines = [];
     text.split(/\r?\n/).forEach((line, idx) => {
@@ -710,7 +710,7 @@
     });
     return { nominees, lineNos, badLines };
   }
-  const NOM_LABEL = { manager_name: "上司名稱", name: "提名名稱", employee_name: "下屬名稱" };
+  const NOM_LABEL = { manager_name: "推薦人名稱", name: "成果名稱", employee_name: "代表人名稱" };
 
   addBtn.addEventListener("click", openModal);
   $("awardModalCancel").addEventListener("click", () => { if (!creating) closeModal(); });
@@ -721,7 +721,7 @@
     const name = $("newAwardName").value.trim();
     const { nominees, lineNos, badLines } = parseNominees($("newAwardList").value);
     if (!name) setError("newAwardName", "請輸入獎項名稱");
-    if (badLines.length) setError("newAwardList", `第 ${badLines.join("、")} 行格式不正確，須為「上司 提名名稱 下屬」，中間以空白隔開`);
+    if (badLines.length) setError("newAwardList", `第 ${badLines.join("、")} 行格式不正確，須為「推薦人 成果名稱 代表人」，中間以空白隔開`);
     if (!name) { $("newAwardName").focus(); return; }
     if (badLines.length) { $("newAwardList").focus(); return; }
 

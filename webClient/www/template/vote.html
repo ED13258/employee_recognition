@@ -377,7 +377,7 @@
     const fullName = n => `${n.manager_name} ${n.name} ${n.employee_name}`;   // 給螢幕閱讀器用的完整名稱
     const dis = locked ? "disabled" : "";
 
-    // 提名名單：上司｜提名名稱｜下屬｜表決
+    // 提名名單：推薦人｜成果名稱｜代表人｜表決
     const rows = p.nominations.map(n => {
       const v = d.decisions[n.id];
       return `<tr>
@@ -394,15 +394,15 @@
     }).join("");
     const nomTable = p.nominations.length ? `
       <div class="table-wrap"><table class="vtable">
-        <thead><tr><th>上司</th><th>提名名稱</th><th>下屬</th><th class="act">表決</th></tr></thead>
+        <thead><tr><th>推薦人</th><th>成果名稱</th><th>代表人</th><th class="act">表決</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>` : `<div class="note">此獎項尚無提名。</div>`;
 
-    // 通過案件排序：名次｜上司｜提名名稱｜下屬｜調整
+    // 通過案件排序：排序｜推薦人｜成果名稱｜代表人｜調整
     const rank = d.ranking.length > 1 ? `
       <div class="rank"><h3>通過案件排序（第 1 名最優）</h3>
         <div class="table-wrap"><table class="vtable rtable">
-          <thead><tr><th class="no">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th class="act">調整</th></tr></thead>
+          <thead><tr><th class="no">排序</th><th>推薦人</th><th>成果名稱</th><th>代表人</th><th class="act">調整</th></tr></thead>
           <tbody>${d.ranking.map((id, i) => { const n = nomOf(id); return `
             <tr>
               <td class="no">${i + 1}</td>
