@@ -166,7 +166,18 @@
   .fund-section { margin-top: 22px; padding-top: 20px; border-top: 1px dashed #d6dae3; }
   .fund-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px 16px; flex-wrap: wrap; }
   .fund-title { font-size: 16px; font-weight: 600; color: var(--card-text); }
-  .fund-note { font-size: 13px; color: var(--card-muted); }
+  /* 各獎項獎金計算上方的預算算式（VD17） */
+  .fund-budget { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; margin-top: 12px; padding: 12px 16px; background: #f7f8fb; border-radius: 10px; }
+  .fund-budget .basis { margin-left: auto; }   /* 算式靠左，切換按鈕靠右；畫面變窄時換行 */
+  .fb-formula { font-size: 14px; color: var(--card-muted); display: flex; align-items: baseline; gap: 4px 6px; flex-wrap: wrap; }
+  .fb-formula b { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--card-text); }
+  .fb-formula b.neg { color: var(--red); }
+  .fb-formula .op { font-size: 14px; color: #9aa0ab; }
+  .fb-dirty { font-size: 12px; color: #b45309; }
+  .fb-dirty:empty { display: none; }
+  .fund-budget .basis { gap: 8px; }
+  .fund-budget .basis-label { font-size: 13px; }
+  .fund-budget .seg button { font-size: 13px; padding: 6px 12px; }
   .money, .note-in { font: inherit; font-size: 14px; color: var(--card-text); padding: 8px 10px; border: 1px solid #d6dae3; border-radius: 8px; background: var(--surface); }
   .money { width: 110px; text-align: right; font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
   .note-in { width: 100%; min-width: 140px; }
@@ -508,7 +519,18 @@
       <div class="fund-section">
         <div class="fund-head">
           <span class="fund-title">獎金計算</span>
-          <span class="fund-note">實發金額 = 核定獎金 − 已獲即時獎勵（獲選團隊之前沒領過就留空）</span>
+        </div>
+        <!-- 預算算式：位於「獎金計算」標題與表格之間（VD18） -->
+        <div class="fund-budget">
+          <span class="fb-formula" data-fund-budget aria-live="polite"></span>
+          <span class="fb-dirty" data-fund-dirty></span>
+          <span class="basis">
+            <span class="basis-label">剩餘預算依</span>
+            <span class="seg" role="group" aria-label="剩餘預算計算依據">
+              <button type="button" data-basis="net">實發總金額</button>
+              <button type="button" data-basis="approved">核定總金額</button>
+            </span>
+          </span>
         </div>
         <div class="rc-table-wrap"><table class="rc-table">
           <thead><tr>
@@ -558,6 +580,7 @@
     }
     rankings[p.id] = r.data;
     el.innerHTML = resultCardHTML(p, r.data);
+    renderCardBudgets();
     return true;
   }
 
@@ -576,7 +599,7 @@
     await Promise.all(prizes.map(loadRanking));
   }
 
-  // 輸入時只更新該列的實發金額，不更新預算總覽（VDQ6）
+  // 輸入時更新該列的實發金額與各獎項上方的預算算式（VD17）；「獎金預算總覽」分頁仍只顯示已儲存的數字（VDQ6）
   awardList.addEventListener("input", e => {
     const t = e.target.closest("[data-k]"); if (!t) return;
     const card = cardEl(t.dataset.p);
@@ -587,6 +610,7 @@
     const issue = val("issue_bonus"), deduct = val("deduct_instant_bonus");
     card.querySelector(`[data-net="${t.dataset.n}"]`).innerHTML =
       Number.isNaN(issue) || Number.isNaN(deduct) ? "—" : netCell(issue, deduct);
+    renderCardBudgets();
   });
   // 離開欄位時加上千分位
   awardList.addEventListener("change", e => {
@@ -693,7 +717,67 @@
     $("budgetState").hidden = true;
     $("budgetBody").hidden = false;
     renderBudget();
+    renderCardBudgets();
     return true;
+  }
+
+  /* ---------- 各獎項上方的預算算式（VD17） ----------
+     以已儲存的合計為基礎，畫面上已載入的提名改用輸入框目前的金額，所以尚未儲存的修改也會即時反映。
+     輸入格式不正確的欄位沿用已儲存的值。剩餘預算以整場會議計算，所有獎項卡片顯示相同的數字。 */
+  function liveTotals() {
+    let savedIssue = 0, savedDeduct = 0, curIssue = 0, curDeduct = 0, dirty = false;
+    for (const p of prizes) {
+      const data = rankings[p.id]; if (!data) continue;
+      const card = cardEl(p.id);
+      for (const it of data.items) {
+        const si = it.issue_bonus || 0, sd = it.deduct_instant_bonus || 0;
+        savedIssue += si; savedDeduct += sd;
+        const val = (k, saved) => {
+          const el = card?.querySelector(`[data-n="${it.nominate_id}"][data-k="${k}"]`);
+          if (!el) return saved;
+          const v = parseMoney(el.value);
+          return Number.isNaN(v) ? saved : (v ?? 0);
+        };
+        const ci = val("issue_bonus", si), cd = val("deduct_instant_bonus", sd);
+        if (ci !== si || cd !== sd) dirty = true;
+        curIssue += ci; curDeduct += cd;
+      }
+    }
+    // 尚未載入的獎項（例如載入失敗）以獎金彙總中的已儲存金額計算
+    const issue = budget.total_issue_bonus - savedIssue + curIssue;
+    const deduct = budget.total_deduct_instant_bonus - savedDeduct + curDeduct;
+    return { total: budget.total_budget, issue, deduct, net: issue - deduct, dirty };
+  }
+
+  function renderCardBudgets() {
+    const slots = awardList.querySelectorAll("[data-fund-budget]");
+    if (!slots.length) return;
+    let html = "—", dirtyText = "";
+    if (budget) {
+      const x = liveTotals();
+      const rest = basis === "net" ? x.total - x.net : x.total - x.net - x.deduct;
+      const term = (label, v, cls = "") => `<span>${label}</span> <b class="${cls}">${fmtMoney(v)}</b>`;
+      html = [
+        term("總預算", x.total), `<span class="op">−</span>`, term("實發總金額", x.net),
+        ...(basis === "approved" ? [`<span class="op">−</span>`, term("扣除即時獎勵合計", x.deduct)] : []),
+        `<span class="op">=</span>`, term("剩餘預算", rest, rest < 0 ? "neg" : ""),
+      ].join(" ");
+      dirtyText = x.dirty ? "（含尚未儲存的金額）" : "";
+    } else {
+      html = `<span>無法計算剩餘預算</span>`;
+    }
+    slots.forEach(el => { el.innerHTML = html; });
+    awardList.querySelectorAll("[data-fund-dirty]").forEach(el => { el.textContent = dirtyText; });
+    renderBasis();
+  }
+
+  // 所有「剩餘預算依」按鈕同步（各獎項卡片與獎金預算總覽）
+  function renderBasis() {
+    document.querySelectorAll("[data-basis]").forEach(b => {
+      const on = b.dataset.basis === basis;
+      b.classList.toggle("on", on);
+      b.setAttribute("aria-pressed", on);
+    });
   }
 
   function renderBudget() {
@@ -711,16 +795,14 @@
     // 依實發總金額計算時不含扣除即時獎勵；依核定總金額計算時才顯示「− 扣除即時獎勵」
     $("tileDeducted").hidden = basis === "net";
     $("opDeducted").hidden = basis === "net";
-    document.querySelectorAll("[data-basis]").forEach(b => {
-      const on = b.dataset.basis === basis;
-      b.classList.toggle("on", on);
-      b.setAttribute("aria-pressed", on);
-    });
+    renderBasis();
   }
-  document.querySelector(".seg").addEventListener("click", e => {
+  document.addEventListener("click", e => {
     const b = e.target.closest("[data-basis]"); if (!b) return;
     basis = b.dataset.basis;
     renderBudget();
+    renderCardBudgets();
+    renderBasis();
   });
 
   /* ---------- 初始化（VD5） ---------- */
