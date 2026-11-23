@@ -156,8 +156,8 @@
   .rc-table .num { text-align: right; white-space: nowrap; }
   .rc-table td.num { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
   .rc-table .place { text-align: center; width: 56px; }
-  .rc-table td.nm { min-width: 180px; }                       /* 提名名稱 */
-  .rc-table td.person { white-space: nowrap; }               /* 上司、下屬 */
+  .rc-table td.nm { min-width: 180px; }                       /* 成果名稱 */
+  .rc-table td.person { white-space: nowrap; }               /* 推薦人、代表人 */
   .rc-table tr.top td { background: #eaf0ff; }
   .maj { color: #3b6ef5; font-weight: 600; white-space: nowrap; }
   .nomaj { color: var(--card-muted); white-space: nowrap; }
@@ -482,16 +482,16 @@
     const items = data.items;
     if (!items.length) return `${head}<div class="rc-empty">此獎項尚無提名。</div>`;
 
-    // 提名分成上司、提名名稱、下屬三欄（VD15）
+    // 提名分成推薦人、成果名稱、代表人三欄（VD15）
     const nomCells = it => `<td class="person">${esc(it.manager_name)}</td><td class="nm">${esc(it.name)}</td><td class="person">${esc(it.employee_name)}</td>`;
     const ariaLabel = it => esc(`${it.manager_name} ${it.name} ${it.employee_name}`);
     const place = it => it.rank ?? "—";
 
-    // VDR3、VDR4：順序、名次與門檻結果都使用後端結果
+    // VDR3、VDR4：順序、排序與門檻結果都使用後端結果
     const results = `
       <div class="rc-table-wrap"><table class="rc-table">
         <thead><tr>
-          <th class="place">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th class="num">通過</th><th class="num">不通過</th>
+          <th class="place">排序</th><th>推薦人</th><th>成果名稱</th><th>代表人</th><th class="num">通過</th><th class="num">不通過</th>
           <th class="num">序位得分</th><th class="num">平均序位</th><th>是否通過門檻</th>
         </tr></thead>
         <tbody>${items.map(it => `
@@ -512,7 +512,7 @@
         </div>
         <div class="rc-table-wrap"><table class="rc-table">
           <thead><tr>
-            <th class="place">名次</th><th>上司</th><th>提名名稱</th><th>下屬</th><th>是否通過門檻</th><th class="num">核定獎金</th>
+            <th class="place">排序</th><th>推薦人</th><th>成果名稱</th><th>代表人</th><th>是否通過門檻</th><th class="num">核定獎金</th>
             <th class="num">扣除即時獎勵</th><th class="num">實發金額</th><th>備註</th>
           </tr></thead>
           <tbody>${items.map(it => `
